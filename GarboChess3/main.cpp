@@ -13,11 +13,22 @@ typedef unsigned long long u64;
 // White is at the "bottom" of the bitboard, in the bits 56-63 for Rank A for example.
 // So, white pawns move by subtracting 1 from their row/rank
 typedef u64 Bitboard;
+
+// Move 0-4: from, 5-9: to, 10-11: promotion type, 12-13: flags
 typedef u16 Move;
 typedef int Square;
 
 typedef int Piece;
 typedef int Color;
+
+const Move PromotionTypeKnight = 0 << 10;
+const Move PromotionTypeBishop = 1 << 10;
+const Move PromotionTypeRook = 2 << 10;
+const Move PromotionTypeQueen = 3 << 10;
+
+const Move MoveTypeNone = 0 << 12;
+const Move MoveTypePromotion = 1 << 12;
+const Move MoveTypeCastle = 2 << 12;
 
 enum Piece_Type
 {
@@ -34,6 +45,18 @@ enum Color_Type
 {
 	WHITE,
 	BLACK
+};
+
+// Files are rows
+enum File_Type
+{
+	FILE_8,	FILE_7,	FILE_6,	FILE_5,	FILE_4,	FILE_3,	FILE_2,	FILE_1
+};
+
+// Ranks are columns
+enum Rank_Type
+{
+	RANK_A, RANK_B, RANK_C, RANK_D, RANK_E, RANK_F, RANK_G, RANK_H
 };
 
 const u64 RMult[64] = {
@@ -114,9 +137,26 @@ Bitboard RAttacks[0x19000];
 
 Bitboard KingAttacks[64];
 
+bool IsSquareValid(const Square square)
+{
+	return square >= 0 && square < 64;
+}
+
 inline Square MakeSquare(const int row, const int column)
 {
 	return (row << 3) | column;
+}
+
+inline int GetRow(const Square square)
+{
+	ASSERT(IsSquareValid(square));
+	return square >> 3;
+}
+
+inline int GetColumn(const Square square)
+{
+	ASSERT(IsSquareValid(square));
+	return square & 7;
 }
 
 inline Color FlipColor(const Color color)
@@ -353,17 +393,72 @@ void Position::Initialize(const std::string &fen)
 
 }*/
 
-bool IsSquareValid(const Square square)
-{
-	return square >= 0 && square < 64;
-}
-
 Move GenerateMove(const Square from, const Square to)
 {
 	ASSERT(IsSquareValid(from));
 	ASSERT(IsSquareValid(to));
 
 	return from | (to << 5);
+}
+
+Move GeneratePromotionMove(const Square from, const Square to, const int promotionType)
+{
+	return GenerateMove(from, to) | promotionType | MoveTypePromotion;
+}
+
+template<int homeRow, int targetRow, int promotionRow>
+void GeneratePawnQuietMoves(Bitboard b, Move *moves, int &moveCount, const Color us, const Bitboard empty, const Bitboard them)
+{
+	while (b)
+	{
+		const Square from = PopFirstBit(b);
+
+		Bitboard attacks = GetPawnMoves(from, us) & empty;
+
+		const int row = GetRow(from);
+
+		if (attacks)
+		{
+			if (row == homeRow)
+			{
+				// Double push
+				const Square to = MakeSquare(targetRow, GetColumn(from));
+				if (IsBitSet(empty, to))
+				{
+					moves[moveCount++] = GenerateMove(from, MakeSquare(targetRow, GetColumn(from)));
+				}
+			}
+
+			if (row != promotionRow)
+			{
+				// Single push
+				moves[moveCount++] = GenerateMove(from, GetFirstBitIndex(attacks));
+			}
+			else
+			{
+				// Promotions (non-queen)
+				const Square to = GetFirstBitIndex(attacks);
+				moves[moveCount++] = GeneratePromotionMove(from, to, PromotionTypeKnight);
+				moves[moveCount++] = GeneratePromotionMove(from, to, PromotionTypeRook);
+				moves[moveCount++] = GeneratePromotionMove(from, to, PromotionTypeBishop);
+			}
+		}
+
+		if (row == promotionRow)
+		{
+			// Cheat a bit, and generate capture promotions
+			attacks = GetPawnAttacks(from, us) & them;
+
+			while (attacks)
+			{
+				Square to = PopFirstBit(attacks);
+
+				moves[moveCount++] = GeneratePromotionMove(from, to, PromotionTypeKnight);
+				moves[moveCount++] = GeneratePromotionMove(from, to, PromotionTypeRook);
+				moves[moveCount++] = GeneratePromotionMove(from, to, PromotionTypeBishop);
+			}
+		}
+	}
 }
 
 #define MoveGenerationLoop(func, piece)								\
@@ -381,21 +476,29 @@ Move GenerateMove(const Square from, const Square to)
 
 int GenerateQuietMoves(const Position &position, Move *moves)
 {
-	const Bitboard ourPieces = position.Pieces[position.ToMove];
+	const Color us = position.ToMove;
+	const Color them = FlipColor(position.ToMove);
+	const Bitboard ourPieces = position.Pieces[us];
 	const Bitboard allPieces = position.Pieces[0] | position.Pieces[1];
 	const Bitboard targets = ~allPieces;
 	
 	int moveCount = 0;
 	Bitboard b;
 
-	// Pawn double hops
-	// TODO
+	// Generate pawn push, push promotions (non-queen), capture promotions (non-queen), pawn double hops
+	if (us == WHITE)
+	{
+		GeneratePawnQuietMoves<FILE_2, FILE_4, FILE_7>(position.Pieces[PAWN] & ourPieces, moves, moveCount, us, targets, position.Pieces[them]);
+	}
+	else
+	{
+		GeneratePawnQuietMoves<FILE_7, FILE_5, FILE_2>(position.Pieces[PAWN] & ourPieces, moves, moveCount, us, targets, position.Pieces[them]);
+	}
 
 	// Castling moves
 	// TODO
 
 	// Normal piece moves
-	MoveGenerationLoop(GetPawnMoves(from, position.ToMove), PAWN);
 	MoveGenerationLoop(GetKnightAttacks(from), KNIGHT);
 	MoveGenerationLoop(GetBishopAttacks(from, allPieces), BISHOP);
 	MoveGenerationLoop(GetRookAttacks(from, allPieces), ROOK);
@@ -414,8 +517,16 @@ int GenerateCaptures(const Position &position, Move *moves)
 	int moveCount = 0;
 	Bitboard b;
 
+	// Pawn attacks
+	// TODO
+	
+	// Pawn promotions (queen only)
+	// TODO
+
+	// En passent
+	// TODO
+
 	// Normal piece moves
-	MoveGenerationLoop(GetPawnAttacks(from, position.ToMove), PAWN);
 	MoveGenerationLoop(GetKnightAttacks(from), KNIGHT);
 	MoveGenerationLoop(GetBishopAttacks(from, allPieces), BISHOP);
 	MoveGenerationLoop(GetRookAttacks(from, allPieces), ROOK);
