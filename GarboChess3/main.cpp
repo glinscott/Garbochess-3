@@ -100,6 +100,7 @@ const int BShift[64] = {
   59, 59, 59, 59, 59, 59, 59, 59, 58, 59, 59, 59, 59, 59, 59, 58
 };
 
+Bitboard PawnMoves[2][64];
 Bitboard PawnAttacks[2][64];
 Bitboard KnightAttacks[64];
 
@@ -116,6 +117,13 @@ Bitboard KingAttacks[64];
 inline Square MakeSquare(const int row, const int column)
 {
 	return (row << 3) | column;
+}
+
+inline Color FlipColor(const Color color)
+{
+	ASSERT(color == WHITE || color == BLACK);
+
+	return color ^ 1;
 }
 
 inline bool IsBitSet(const Bitboard board, const Square square)
@@ -175,6 +183,11 @@ inline int CountBitsSetMax15(Bitboard b)
 	b = ((b >> 2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
 	b *= 0x1111111111111111ULL;
 	return int(b >> 60);
+}
+
+inline Bitboard GetPawnMoves(const Square square, const Color color)
+{
+	return PawnMoves[color][square];
 }
 
 inline Bitboard GetPawnAttacks(const Square square, const Color color)
@@ -279,6 +292,7 @@ void InitializeBitboards()
 	InitializeAttackTables(BAttacks, BAttackIndex, BMask, BShift, BMult, bishopDeltas);
 
 	int pawnDeltas[2][2][2] = {{{-1,-1},{-1,1}},{{1,-1},{1,1}}};
+	int pawnMoveDeltas[2][2] = {{-1,0},{1,0}};
 	int knightDeltas[8][2] = {{-1,-2},{-1,2},{1,-2},{1,2},{-2,-1},{-2,1},{2,-1},{2,1}};
 	int kingDeltas[8][2] = {{0,1},{0,-1},{1,0},{-1,0},{1,1},{-1,1},{1,-1},{-1,-1}};
 
@@ -295,6 +309,9 @@ void InitializeBitboards()
 				{
 					SetIfInBounds(row, col, pawnDeltas[color][i], PawnAttacks[color][square]);
 				}
+
+				PawnMoves[color][square] = 0;
+				SetIfInBounds(row, col, pawnMoveDeltas[color], PawnMoves[color][square]);
 			}
 
 			KnightAttacks[square] = 0;
@@ -371,6 +388,32 @@ int GenerateQuietMoves(const Position &position, Move *moves)
 	int moveCount = 0;
 	Bitboard b;
 
+	// Pawn double hops
+	// TODO
+
+	// Castling moves
+	// TODO
+
+	// Normal piece moves
+	MoveGenerationLoop(GetPawnMoves(from, position.ToMove), PAWN);
+	MoveGenerationLoop(GetKnightAttacks(from), KNIGHT);
+	MoveGenerationLoop(GetBishopAttacks(from, allPieces), BISHOP);
+	MoveGenerationLoop(GetRookAttacks(from, allPieces), ROOK);
+	MoveGenerationLoop(GetQueenAttacks(from, allPieces), QUEEN);
+	MoveGenerationLoop(GetKingAttacks(from), KING);
+
+	return moveCount;
+}
+
+int GenerateCaptures(const Position &position, Move *moves)
+{
+	const Bitboard ourPieces = position.Pieces[position.ToMove];
+	const Bitboard allPieces = position.Pieces[0] | position.Pieces[1];
+	const Bitboard targets = position.Pieces[FlipColor(position.ToMove)];
+	
+	int moveCount = 0;
+	Bitboard b;
+
 	// Normal piece moves
 	MoveGenerationLoop(GetPawnAttacks(from, position.ToMove), PAWN);
 	MoveGenerationLoop(GetKnightAttacks(from), KNIGHT);
@@ -379,23 +422,19 @@ int GenerateQuietMoves(const Position &position, Move *moves)
 	MoveGenerationLoop(GetQueenAttacks(from, allPieces), QUEEN);
 	MoveGenerationLoop(GetKingAttacks(from), KING);
 
-	// Castling moves
-	
-
 	return moveCount;
 }
 
-void GenerateCaptures(const Position &position)
+int GenerateCheckingMoves(const Position &position)
 {
-	
+	int moveCount = 0;
+	return moveCount;
 }
 
-void GenerateCheckingMoves(const Position &position)
+int GenerateCheckEscapeMoves(const Position &position)
 {
-}
-
-void GenerateEscapeMoves(const Position &position)
-{
+	int moveCount = 0;
+	return moveCount;
 }
 
 void PrintBitboard(const Bitboard b)
@@ -453,6 +492,11 @@ int main()
 	InitializeBitboards();
 
 	UnitTests();
+
+	for (int i = 0; i < 64; i++)
+	{
+		PrintBitboard(GetPawnMoves(i, BLACK));
+	}
 
 	return 0;
 }
