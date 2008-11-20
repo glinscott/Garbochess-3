@@ -171,7 +171,27 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\garbochess.h"
+				>
+			</File>
+			<File
 				RelativePath=".\main.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\movegen.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\movegen.h"
+				>
+			</File>
+			<File
+				RelativePath=".\position.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\position.h"
 				>
 			</File>
 		</Filter>

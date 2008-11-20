@@ -1,0 +1,150 @@
+#include <cassert>
+#define ASSERT(a) (assert(a))
+
+typedef signed short s16;
+typedef unsigned short u16;
+
+typedef signed long long s64;
+typedef unsigned long long u64;
+
+// White is at the "bottom" of the bitboard, in the bits 56-63 for Rank A for example.
+// So, white pawns move by subtracting 1 from their row/rank
+typedef u64 Bitboard;
+
+// Move 0-4: from, 5-9: to, 10-11: promotion type, 12-13: flags
+typedef u16 Move;
+typedef int Square;
+
+typedef int Piece;
+typedef int Color;
+
+const Move PromotionTypeKnight = 0 << 10;
+const Move PromotionTypeBishop = 1 << 10;
+const Move PromotionTypeRook = 2 << 10;
+const Move PromotionTypeQueen = 3 << 10;
+
+const Move MoveTypeNone = 0 << 12;
+const Move MoveTypePromotion = 1 << 12;
+const Move MoveTypeCastle = 2 << 12;
+const Move MoveTypeEnPassent = 3 << 12;
+
+const int CastleFlagWhiteKing = 1;
+const int CastleFlagWhiteQueen = 2;
+const int CastleFlagBlackKing = 4;
+const int CastleFlagBlackQueen = 8;
+
+enum Piece_Type
+{
+	NONE,
+	PAWN,
+	KNIGHT,
+	BISHOP,
+	ROOK,
+	QUEEN,
+	KING
+};
+
+enum Color_Type
+{
+	WHITE,
+	BLACK
+};
+
+// Files are columns
+enum File_Type
+{
+	FILE_A,	FILE_B,	FILE_C,	FILE_D,	FILE_E,	FILE_F,	FILE_G,	FILE_H
+};
+
+// Ranks are rows
+enum Rank_Type
+{
+	RANK_8, RANK_7, RANK_6, RANK_5, RANK_4, RANK_3, RANK_2, RANK_1
+};
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Bitboard operations
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline bool IsSquareValid(const Square square)
+{
+	return square >= 0 && square < 64;
+}
+
+inline Square MakeSquare(const int row, const int column)
+{
+	return (row << 3) | column;
+}
+
+inline int GetRow(const Square square)
+{
+	ASSERT(IsSquareValid(square));
+	return square >> 3;
+}
+
+inline int GetColumn(const Square square)
+{
+	ASSERT(IsSquareValid(square));
+	return square & 7;
+}
+
+inline Color FlipColor(const Color color)
+{
+	ASSERT(color == WHITE || color == BLACK);
+	return color ^ 1;
+}
+
+inline bool IsBitSet(const Bitboard board, const Square square)
+{
+	return (board >> square) & 1;
+}
+
+inline void SetBit(Bitboard &board, const Square square)
+{
+	board |= 1ULL << square;
+}
+
+inline void ClearBit(Bitboard &board, const Square square)
+{
+	board &= ~(1ULL << square);
+}
+
+inline u64 GetLowSetBit(const Bitboard &board)
+{
+	// TODO: asm
+	return board & (-(s64)board);
+}
+
+extern const int BitTable[64];
+
+inline Square GetFirstBitIndex(const Bitboard b)
+{
+	// TODO: asm
+	return Square(BitTable[((b & -s64(b)) * 0x218a392cd3d5dbfULL) >> 58]);
+}
+
+inline Square PopFirstBit(Bitboard &b)
+{
+	// TODO: asm
+	const Bitboard bb = b;
+	b &= (b - 1);
+	return Square(BitTable[((bb & -s64(bb)) * 0x218a392cd3d5dbfULL) >> 58]); 
+}
+
+inline int CountBitsSet(Bitboard b)
+{
+	b -= ((b >> 1) & 0x5555555555555555ULL);
+	b = ((b >> 2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
+	b = ((b >> 4) + b) & 0x0F0F0F0F0F0F0F0FULL;
+	b *= 0x0101010101010101ULL;
+	return int(b >> 56);
+}
+
+inline int CountBitsSetMax15(Bitboard b)
+{
+	b -= (b >> 1) & 0x5555555555555555ULL;
+	b = ((b >> 2) & 0x3333333333333333ULL) + (b & 0x3333333333333333ULL);
+	b *= 0x1111111111111111ULL;
+	return int(b >> 60);
+}
