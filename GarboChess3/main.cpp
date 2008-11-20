@@ -57,6 +57,7 @@ void UnitTests()
 int main()
 {
 	InitializeBitboards();
+	Position::StaticInitialize();
 
 	UnitTests();
 

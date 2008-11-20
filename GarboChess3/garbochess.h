@@ -148,3 +148,14 @@ inline int CountBitsSetMax15(Bitboard b)
 	b *= 0x1111111111111111ULL;
 	return int(b >> 60);
 }
+
+// Move helpers
+inline Square GetFrom(const Move move)
+{
+	return move & 0x1F;
+}
+
+inline Square GetTo(const Move move)
+{
+	return (move >> 5) & 0x1F;
+}
