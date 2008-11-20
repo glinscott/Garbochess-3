@@ -29,6 +29,12 @@ const Move PromotionTypeQueen = 3 << 10;
 const Move MoveTypeNone = 0 << 12;
 const Move MoveTypePromotion = 1 << 12;
 const Move MoveTypeCastle = 2 << 12;
+const Move MoveTypeEP = 3 << 12;
+
+const int CastleFlagWhiteKing = 1;
+const int CastleFlagWhiteQueen = 2;
+const int CastleFlagBlackKing = 4;
+const int CastleFlagBlackQueen = 8;
 
 enum Piece_Type
 {
@@ -47,16 +53,16 @@ enum Color_Type
 	BLACK
 };
 
-// Files are rows
+// Files are columns
 enum File_Type
 {
-	FILE_8,	FILE_7,	FILE_6,	FILE_5,	FILE_4,	FILE_3,	FILE_2,	FILE_1
+	FILE_A,	FILE_B,	FILE_C,	FILE_D,	FILE_E,	FILE_F,	FILE_G,	FILE_H
 };
 
-// Ranks are columns
+// Ranks are rows
 enum Rank_Type
 {
-	RANK_A, RANK_B, RANK_C, RANK_D, RANK_E, RANK_F, RANK_G, RANK_H
+	RANK_8, RANK_7, RANK_6, RANK_5, RANK_4, RANK_3, RANK_2, RANK_1
 };
 
 const u64 RMult[64] = {
@@ -273,8 +279,8 @@ Bitboard SlidingAttacks(Square sq, Bitboard block, int dirs, int deltas[][2], in
 			(dx == 0 || (f >= fmin && f <= fmax)) && (dy == 0 || (r >= rmin && r <= rmax));
 			f += dx, r += dy)
 		{
-				result |= (1ULL << (f + r * 8));
-				if (block & (1ULL << (f + r * 8))) break;
+			result |= (1ULL << (f + r * 8));
+			if (block & (1ULL << (f + r * 8))) break;
 		}
 	}
 	return result;
@@ -372,13 +378,15 @@ void InitializeBitboards()
 class Position
 {
 public:
+	u64 Hash;
+	u64 PawnHash;
+
 	Bitboard Pieces[8];
 	Bitboard Colors[2];
 	int KingPos[2];
-	u64 Hash;
-	u64 PawnHash;
 	Color ToMove;
 	int CastleFlags;
+	Square EnPassent;
 	
 	void Initialize(const std::string &fen);
 };
@@ -404,6 +412,16 @@ Move GenerateMove(const Square from, const Square to)
 Move GeneratePromotionMove(const Square from, const Square to, const int promotionType)
 {
 	return GenerateMove(from, to) | promotionType | MoveTypePromotion;
+}
+
+Move GenerateCastleMove(const Square from, const Square to)
+{
+	return GenerateMove(from, to) | MoveTypeCastle;
+}
+
+Move GenerateEnPassentMove(const Square from, const Square to)
+{
+	return GenerateMove(from, to) | MoveTypeEnPassent;
 }
 
 template<int homeRow, int targetRow, int promotionRow>
@@ -451,11 +469,42 @@ void GeneratePawnQuietMoves(Bitboard b, Move *moves, int &moveCount, const Color
 
 			while (attacks)
 			{
-				Square to = PopFirstBit(attacks);
-
+				const Square to = PopFirstBit(attacks);
 				moves[moveCount++] = GeneratePromotionMove(from, to, PromotionTypeKnight);
 				moves[moveCount++] = GeneratePromotionMove(from, to, PromotionTypeRook);
 				moves[moveCount++] = GeneratePromotionMove(from, to, PromotionTypeBishop);
+			}
+		}
+	}
+}
+
+template<int promotionRow>
+void GeneratePawnCaptures(Bitboard b, Move *moves, int &moveCount, const Color us, const Bitboard empty, const Bitboard them)
+{
+	while (b)
+	{
+		const Square from = PopFirstBit(b);
+		const int row = GetRow(from);
+
+		Bitboard attacks = GetPawnAttacks(from, us) & them;
+
+		if (row != promotionRow)
+		{
+			// Normal pawn attacks
+			while (attacks)
+			{
+				const Square to = PopFirstBit(attacks);
+				moves[moveCount++] = GenerateMove(from, to);
+			}
+		}
+		else
+		{
+			// Pawn promotions - attacks to queen, push to queen
+			attacks |= GetPawnMoves(from, us) & empty;
+			while (attacks)
+			{
+				const Square to = PopFirstBit(attacks);
+				moves[moveCount++] = GeneratePromotionMove(from, to, PromotionTypeQueen);
 			}
 		}
 	}
@@ -484,19 +533,42 @@ int GenerateQuietMoves(const Position &position, Move *moves)
 	
 	int moveCount = 0;
 	Bitboard b;
+	int castleFlags;
 
 	// Generate pawn push, push promotions (non-queen), capture promotions (non-queen), pawn double hops
 	if (us == WHITE)
 	{
-		GeneratePawnQuietMoves<FILE_2, FILE_4, FILE_7>(position.Pieces[PAWN] & ourPieces, moves, moveCount, us, targets, position.Pieces[them]);
+		GeneratePawnQuietMoves<RANK_2, RANK_4, RANK_7>(position.Pieces[PAWN] & ourPieces, moves, moveCount, us, targets, position.Pieces[them]);
+
+		castleFlags = position.CastleFlags;
 	}
 	else
 	{
-		GeneratePawnQuietMoves<FILE_7, FILE_5, FILE_2>(position.Pieces[PAWN] & ourPieces, moves, moveCount, us, targets, position.Pieces[them]);
+		GeneratePawnQuietMoves<RANK_7, RANK_5, RANK_2>(position.Pieces[PAWN] & ourPieces, moves, moveCount, us, targets, position.Pieces[them]);
+
+		castleFlags = position.CastleFlags >> 2;
 	}
 
-	// Castling moves
-	// TODO
+	// Castling (treated as though we are always white)
+	if (castleFlags & CastleFlagWhiteKing)
+	{
+		const int kingRow = GetRow(position.KingPos[us]);
+		if (!IsBitSet(allPieces, MakeSquare(kingRow, FILE_F)) &&
+			!IsBitSet(allPieces, MakeSquare(kingRow, FILE_G)))
+		{
+			moves[moveCount++] = GenerateCastleMove(position.KingPos[us], MakeSquare(kingRow, FILE_G));
+		}
+	}
+	if (castleFlags & CastleFlagWhiteQueen)
+	{
+		const int kingRow = GetRow(position.KingPos[us]);
+		if (!IsBitSet(allPieces, MakeSquare(kingRow, FILE_B)) &&
+			!IsBitSet(allPieces, MakeSquare(kingRow, FILE_C)) &&
+			!IsBitSet(allPieces, MakeSquare(kingRow, FILE_D)))
+		{
+			moves[moveCount++] = GenerateCastleMove(position.KingPos[us], MakeSquare(kingRow, FILE_C));
+		}
+	}
 
 	// Normal piece moves
 	MoveGenerationLoop(GetKnightAttacks(from), KNIGHT);
@@ -510,21 +582,34 @@ int GenerateQuietMoves(const Position &position, Move *moves)
 
 int GenerateCaptures(const Position &position, Move *moves)
 {
-	const Bitboard ourPieces = position.Pieces[position.ToMove];
+	const Color us = position.ToMove;
+	const Bitboard ourPieces = position.Pieces[us];
 	const Bitboard allPieces = position.Pieces[0] | position.Pieces[1];
-	const Bitboard targets = position.Pieces[FlipColor(position.ToMove)];
+	const Bitboard targets = position.Pieces[us];
 	
 	int moveCount = 0;
 	Bitboard b;
 
-	// Pawn attacks
-	// TODO
-	
-	// Pawn promotions (queen only)
-	// TODO
+	// Pawn attacks, pawn promotions (queen only)
+	if (us == WHITE)
+	{
+		GeneratePawnCaptures<RANK_7>(position.Pieces[PAWN] & ourPieces, moves, moveCount, us, ~allPieces, targets);
+	}
+	else
+	{
+		GeneratePawnCaptures<RANK_2>(position.Pieces[PAWN] & ourPieces, moves, moveCount, us, ~allPieces, targets);
+	}
 
-	// En passent
-	// TODO
+	// En Passent
+	if (position.EnPassent != -1)
+	{
+		b = position.Pieces[PAWN] & ourPieces & GetPawnAttacks(position.EnPassent, FlipColor(us));
+		while (b)
+		{
+			Square from = PopFirstBit(b);
+			moves[moveCount++] = GenerateEnPassentMove(from, position.EnPassent);
+		}
+	}
 
 	// Normal piece moves
 	MoveGenerationLoop(GetKnightAttacks(from), KNIGHT);
