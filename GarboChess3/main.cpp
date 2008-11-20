@@ -29,7 +29,7 @@ const Move PromotionTypeQueen = 3 << 10;
 const Move MoveTypeNone = 0 << 12;
 const Move MoveTypePromotion = 1 << 12;
 const Move MoveTypeCastle = 2 << 12;
-const Move MoveTypeEP = 3 << 12;
+const Move MoveTypeEnPassent = 3 << 12;
 
 const int CastleFlagWhiteKing = 1;
 const int CastleFlagWhiteQueen = 2;
@@ -387,19 +387,119 @@ public:
 	Color ToMove;
 	int CastleFlags;
 	Square EnPassent;
+	int Fifty;
 	
 	void Initialize(const std::string &fen);
+	void MakeMove(const Move move);
+	void UnmakeMove(const Move move);
+
+private:
+	u64 GetHash() const;
+	u64 GetPawnHash() const;
 };
 
 void Position::Initialize(const std::string &fen)
 {
-	
+	Hash = PawnHash = 0;
+	for (int i = 0; i < 8; i++) Pieces[i] = 0;
+	for (int i = 0; i < 2; i++) Colors[i] = 0;
+
+	// Board
+	int at, row = RANK_8, column = FILE_A;
+	for (at = 0; fen[at] != ' '; at++)
+	{
+		if (fen[at] == '/')
+		{
+			row++;
+			column = FILE_A;
+		}
+		else if (isdigit(fen[at]))
+		{
+			column += fen[at] - '0';
+		}
+		else
+		{
+			Color color = islower(fen[at]) ? BLACK : WHITE;
+			
+			Piece piece;
+			switch (tolower(fen[at]))
+			{
+			case 'p': piece = PAWN; break;
+			case 'n': piece = KNIGHT; break;
+			case 'b': piece = BISHOP; break;
+			case 'r': piece = ROOK; break;
+			case 'q': piece = QUEEN; break;
+			case 'k': piece = KING; break;
+			}
+
+			Square square = MakeSquare(row, column);
+			SetBit(Pieces[piece], square);
+			SetBit(Colors[color], square);
+
+			if (piece == KING)
+			{
+				KingPos[color] = MakeSquare(row, column);
+			}
+
+			column++;
+		}
+	}
+	at++;
+
+	// To move
+	ToMove = fen[at++] == 'w' ? WHITE : BLACK;
+	at++;
+
+	// Castle rights
+	CastleFlags = 0;
+	for (; fen[at] != ' '; at++)
+	{
+		switch (fen[at])
+		{
+		case 'K': CastleFlags |= CastleFlagWhiteKing; break;
+		case 'Q': CastleFlags |= CastleFlagWhiteQueen; break;
+		case 'k': CastleFlags |= CastleFlagBlackKing; break;
+		case 'q': CastleFlags |= CastleFlagBlackQueen; break;
+		}
+	}
+	at++;
+
+	// E.P.
+	EnPassent = -1;
+	if (fen[at++] != '-')
+	{
+		char column = fen[at - 1];
+		char row = fen[at++];
+
+		EnPassent = MakeSquare(7 - (row - 'a'), column - '1');
+	}
+	at++;
+
+	// Fifty move clock
+	Fifty = atoi(fen.c_str() + at);
+
+	Hash = GetHash();
+	PawnHash = GetPawnHash();
 }
 
-/*void Position::MakeMove(const Move move)
+u64 Position::GetHash() const
+{
+	return 0;
+}
+
+u64 Position::GetPawnHash() const
+{
+	return 0;
+}
+
+void Position::MakeMove(const Move move)
 {
 
-}*/
+}
+
+void Position::UnmakeMove(const Move move)
+{
+}
 
 Move GenerateMove(const Square from, const Square to)
 {
@@ -518,7 +618,7 @@ void GeneratePawnCaptures(Bitboard b, Move *moves, int &moveCount, const Color u
 		Bitboard attacks = (func) & targets;						\
 		while (attacks)												\
 		{															\
-			const Square to = PopFirstBit(b);						\
+			const Square to = PopFirstBit(attacks);					\
 			moves[moveCount++] = GenerateMove(from, to);			\
 		}															\
 	}
@@ -527,8 +627,8 @@ int GenerateQuietMoves(const Position &position, Move *moves)
 {
 	const Color us = position.ToMove;
 	const Color them = FlipColor(position.ToMove);
-	const Bitboard ourPieces = position.Pieces[us];
-	const Bitboard allPieces = position.Pieces[0] | position.Pieces[1];
+	const Bitboard ourPieces = position.Colors[us];
+	const Bitboard allPieces = position.Colors[0] | position.Colors[1];
 	const Bitboard targets = ~allPieces;
 	
 	int moveCount = 0;
@@ -583,9 +683,9 @@ int GenerateQuietMoves(const Position &position, Move *moves)
 int GenerateCaptures(const Position &position, Move *moves)
 {
 	const Color us = position.ToMove;
-	const Bitboard ourPieces = position.Pieces[us];
-	const Bitboard allPieces = position.Pieces[0] | position.Pieces[1];
-	const Bitboard targets = position.Pieces[us];
+	const Bitboard ourPieces = position.Colors[us];
+	const Bitboard allPieces = position.Colors[0] | position.Colors[1];
+	const Bitboard targets = position.Colors[FlipColor(us)];
 	
 	int moveCount = 0;
 	Bitboard b;
@@ -689,10 +789,12 @@ int main()
 
 	UnitTests();
 
-	for (int i = 0; i < 64; i++)
-	{
-		PrintBitboard(GetPawnMoves(i, BLACK));
-	}
+	Position position;
+	position.Initialize("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+
+	Move moves[200];
+	int moveCount = GenerateQuietMoves(position, moves);
+	moveCount += GenerateCaptures(position, moves);
 
 	return 0;
 }
