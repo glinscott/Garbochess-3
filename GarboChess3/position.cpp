@@ -36,6 +36,7 @@ void Position::Initialize(const std::string &fen)
 	Hash = PawnHash = 0;
 	for (int i = 0; i < 8; i++) Pieces[i] = 0;
 	for (int i = 0; i < 2; i++) Colors[i] = 0;
+	for (int i = 0; i < 64; i++) Board[i] = 0;
 
 	// Board
 	int at, row = RANK_8, column = FILE_A;
@@ -54,7 +55,7 @@ void Position::Initialize(const std::string &fen)
 		{
 			Color color = islower(fen[at]) ? BLACK : WHITE;
 			
-			Piece piece;
+			PieceType piece;
 			switch (tolower(fen[at]))
 			{
 			case 'p': piece = PAWN; break;
@@ -68,6 +69,7 @@ void Position::Initialize(const std::string &fen)
 			Square square = MakeSquare(row, column);
 			SetBit(Pieces[piece], square);
 			SetBit(Colors[color], square);
+			Board[square] = MakePiece(color, piece);
 
 			if (piece == KING)
 			{
@@ -119,7 +121,7 @@ u64 Position::GetHash() const
 {
 	u64 result = 0;
 
-	for (Piece piece = PAWN; piece <= KING; piece++)
+	for (PieceType piece = PAWN; piece <= KING; piece++)
 	{
 		Bitboard b = Pieces[piece];
 		while (b)
@@ -164,6 +166,11 @@ void Position::MakeMove(const Move move)
 {
 	const Square from = GetFrom(move);
 	const Square to = GetTo(move);
+
+	const PieceType piece = GetPieceType(Board[from]);
+	const PieceType target = GetPieceType(Board[to]);
+
+	
 }
 
 void Position::UnmakeMove(const Move move)

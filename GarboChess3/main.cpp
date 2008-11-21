@@ -67,6 +67,7 @@ int main()
 	Move moves[200];
 	int moveCount = GenerateQuietMoves(position, moves);
 	moveCount += GenerateCaptures(position, moves);
+	std::printf("%d\n",moveCount);
 
 	return 0;
 }

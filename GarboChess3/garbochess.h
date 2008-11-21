@@ -16,6 +16,7 @@ typedef u16 Move;
 typedef int Square;
 
 typedef int Piece;
+typedef int PieceType;
 typedef int Color;
 
 const Move PromotionTypeKnight = 0 << 10;
@@ -93,6 +94,21 @@ inline Color FlipColor(const Color color)
 {
 	ASSERT(color == WHITE || color == BLACK);
 	return color ^ 1;
+}
+
+inline Piece MakePiece(const Color color, const PieceType piece)
+{
+	return (color << 3) | piece;
+}
+
+inline PieceType GetPieceType(const Piece piece)
+{
+	return piece & 7;
+}
+
+inline Color GetPieceColor(const Piece piece)
+{
+	return piece >> 3;
 }
 
 inline bool IsBitSet(const Bitboard board, const Square square)

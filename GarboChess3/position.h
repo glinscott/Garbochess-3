@@ -6,6 +6,7 @@ public:
 	u64 Hash;
 	u64 PawnHash;
 
+	Piece Board[64];
 	Bitboard Pieces[8];
 	Bitboard Colors[2];
 	int KingPos[2];
