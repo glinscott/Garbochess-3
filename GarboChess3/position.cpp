@@ -164,13 +164,63 @@ u64 Position::GetPawnHash() const
 
 void Position::MakeMove(const Move move)
 {
+	const Color us = ToMove;
+	const Color them = FlipColor(us);
+
 	const Square from = GetFrom(move);
 	const Square to = GetTo(move);
 
 	const PieceType piece = GetPieceType(Board[from]);
 	const PieceType target = GetPieceType(Board[to]);
 
-	
+	ASSERT(GetPieceColor(Board[from]) == us);
+	ASSERT(GetPieceColor(Board[to]) == them || Board[to] == PIECE_NONE);
+
+	// Remove the piece from where it was standing
+	XorClearBit(Pieces[piece], from);
+	XorClearBit(Colors[us], from);
+
+	const Move moveFlags = move & MoveTypeFlags;
+	// No flags?
+	if (!moveFlags)
+	{
+		// Then normal move
+		Fifty++;
+
+		if (target != PIECE_NONE)
+		{
+			ASSERT(target != KING);
+
+			XorClearBit(Pieces[target], to);
+			XorClearBit(Colors[them], to);
+		}
+
+		SetBit(Pieces[piece], to);
+		SetBit(Colors[us], to);
+
+		Board[to] = Board[from];
+		Board[from] = PIECE_NONE;
+
+		if (piece == KING)
+		{
+			KingPos[us] = to;
+		}
+	}
+	else
+	{
+		// All special moves are non-reversible
+		Fifty = 0;
+
+		if (moveFlags == MoveTypePromotion)
+		{
+		}
+		else if (moveFlags == MoveTypeCastle)
+		{
+		}
+		else if (moveFlags == MoveTypeEnPassent)
+		{
+		}
+	}
 }
 
 void Position::UnmakeMove(const Move move)

@@ -28,6 +28,7 @@ const Move MoveTypeNone = 0 << 12;
 const Move MoveTypePromotion = 1 << 12;
 const Move MoveTypeCastle = 2 << 12;
 const Move MoveTypeEnPassent = 3 << 12;
+const Move MoveTypeFlags = 3 << 12;
 
 const int CastleFlagWhiteKing = 1;
 const int CastleFlagWhiteQueen = 2;
@@ -36,7 +37,7 @@ const int CastleFlagBlackQueen = 8;
 
 enum Piece_Type
 {
-	NONE,
+	PIECE_NONE,
 	PAWN,
 	KNIGHT,
 	BISHOP,
@@ -124,6 +125,12 @@ inline void SetBit(Bitboard &board, const Square square)
 inline void ClearBit(Bitboard &board, const Square square)
 {
 	board &= ~(1ULL << square);
+}
+
+inline void XorClearBit(Bitboard &board, const Square square)
+{
+	ASSERT(IsBitSet(board, square));
+	board ^= 1ULL << square;
 }
 
 inline u64 GetLowSetBit(const Bitboard &board)
