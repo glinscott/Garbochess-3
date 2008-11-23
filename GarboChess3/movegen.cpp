@@ -326,7 +326,12 @@ int GenerateQuietMoves(const Position &position, Move *moves)
 		if (!IsBitSet(allPieces, MakeSquare(kingRow, FILE_F)) &&
 			!IsBitSet(allPieces, MakeSquare(kingRow, FILE_G)))
 		{
-			moves[moveCount++] = GenerateCastleMove(position.KingPos[us], MakeSquare(kingRow, FILE_G));
+			// Verify that the king is not moving through check
+			if (!position.IsSquareAttacked(MakeSquare(kingRow, FILE_E), them) &&
+				!position.IsSquareAttacked(MakeSquare(kingRow, FILE_F), them))
+			{
+				moves[moveCount++] = GenerateCastleMove(position.KingPos[us], MakeSquare(kingRow, FILE_G));
+			}
 		}
 	}
 	if (castleFlags & CastleFlagWhiteQueen)
@@ -336,7 +341,12 @@ int GenerateQuietMoves(const Position &position, Move *moves)
 			!IsBitSet(allPieces, MakeSquare(kingRow, FILE_C)) &&
 			!IsBitSet(allPieces, MakeSquare(kingRow, FILE_D)))
 		{
-			moves[moveCount++] = GenerateCastleMove(position.KingPos[us], MakeSquare(kingRow, FILE_C));
+			// Verify that the king is not moving through check
+			if (!position.IsSquareAttacked(MakeSquare(kingRow, FILE_D), them) &&
+				!position.IsSquareAttacked(MakeSquare(kingRow, FILE_E), them))
+			{
+				moves[moveCount++] = GenerateCastleMove(position.KingPos[us], MakeSquare(kingRow, FILE_C));
+			}
 		}
 	}
 

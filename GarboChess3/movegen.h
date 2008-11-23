@@ -70,7 +70,7 @@ inline Move GenerateMove(const Square from, const Square to)
 	ASSERT(IsSquareValid(from));
 	ASSERT(IsSquareValid(to));
 
-	return from | (to << 5);
+	return from | (to << 6);
 }
 
 inline Move GeneratePromotionMove(const Square from, const Square to, const int promotionType)
@@ -86,4 +86,28 @@ inline Move GenerateCastleMove(const Square from, const Square to)
 inline Move GenerateEnPassentMove(const Square from, const Square to)
 {
 	return GenerateMove(from, to) | MoveTypeEnPassent;
+}
+
+inline PieceType GetPromotionMoveType(const Move move)
+{
+	const int promotionMove = move & PromotionTypeMask;
+	if (promotionMove == PromotionTypeQueen)
+	{
+		return QUEEN;
+	}
+	else if (promotionMove == PromotionTypeKnight)
+	{
+		return KNIGHT;
+	}
+	else if (promotionMove == PromotionTypeRook)
+	{
+		return ROOK;
+	}
+	else if (promotionMove == PromotionTypeBishop)
+	{
+		return BISHOP;
+	}
+	// Whoops
+	ASSERT(false);
+	return PIECE_NONE;
 }

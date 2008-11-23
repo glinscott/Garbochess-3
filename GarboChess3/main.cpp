@@ -54,6 +54,30 @@ void UnitTests()
 	// TODO: unit test rook attacks and bishop attacks
 }
 
+u64 perft(Position &position, int depth)
+{
+	if (depth == 0) return 1;
+
+	u64 result = 0;
+
+	Move moves[256];
+	int moveCount = GenerateQuietMoves(position, moves);
+	moveCount += GenerateCaptures(position, moves + moveCount);
+
+	for (int i = 0; i < moveCount; i++)
+	{
+		MoveUndo moveUndo;
+		position.MakeMove(moves[i], moveUndo);
+		if (!position.IsSquareAttacked(position.KingPos[FlipColor(position.ToMove)], position.ToMove))
+		{
+			result += perft(position, depth - 1);
+		}
+		position.UnmakeMove(moves[i], moveUndo);
+	}
+
+	return result;
+}
+
 int main()
 {
 	InitializeBitboards();
@@ -64,10 +88,7 @@ int main()
 	Position position;
 	position.Initialize("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
-	Move moves[200];
-	int moveCount = GenerateQuietMoves(position, moves);
-	moveCount += GenerateCaptures(position, moves);
-	std::printf("%d\n",moveCount);
+	std::printf("%d\n", perft(position, 5));
 
 	return 0;
 }

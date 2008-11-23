@@ -1,5 +1,10 @@
 #include <cassert>
-#define ASSERT(a) (assert(a))
+
+#if _DEBUG
+#define ASSERT(a) (!(a) ? throw : 0)
+#else
+#define ASSERT(a)
+#endif
 
 typedef signed short s16;
 typedef unsigned short u16;
@@ -7,11 +12,11 @@ typedef unsigned short u16;
 typedef signed long long s64;
 typedef unsigned long long u64;
 
-// White is at the "bottom" of the bitboard, in the bits 56-63 for Rank A for example.
+// White is at the "bottom" of the bitboard, in the bits 56-63 for Rank 1 for example.
 // So, white pawns move by subtracting 1 from their row/rank
 typedef u64 Bitboard;
 
-// Move 0-4: from, 5-9: to, 10-11: promotion type, 12-13: flags
+// Move 0-5: from, 6-11: to, 12-13: promotion type, 14-15: flags
 typedef u16 Move;
 typedef int Square;
 
@@ -19,21 +24,23 @@ typedef int Piece;
 typedef int PieceType;
 typedef int Color;
 
-const Move PromotionTypeKnight = 0 << 10;
-const Move PromotionTypeBishop = 1 << 10;
-const Move PromotionTypeRook = 2 << 10;
-const Move PromotionTypeQueen = 3 << 10;
+const Move PromotionTypeKnight = 0 << 12;
+const Move PromotionTypeBishop = 1 << 12;
+const Move PromotionTypeRook = 2 << 12;
+const Move PromotionTypeQueen = 3 << 12;
+const Move PromotionTypeMask = 3 << 12;
 
-const Move MoveTypeNone = 0 << 12;
-const Move MoveTypePromotion = 1 << 12;
-const Move MoveTypeCastle = 2 << 12;
-const Move MoveTypeEnPassent = 3 << 12;
-const Move MoveTypeFlags = 3 << 12;
+const Move MoveTypeNone = 0 << 14;
+const Move MoveTypePromotion = 1 << 14;
+const Move MoveTypeCastle = 2 << 14;
+const Move MoveTypeEnPassent = 3 << 14;
+const Move MoveTypeMask = 3 << 14;
 
 const int CastleFlagWhiteKing = 1;
 const int CastleFlagWhiteQueen = 2;
 const int CastleFlagBlackKing = 4;
 const int CastleFlagBlackQueen = 8;
+const int CastleFlagMask = 15;
 
 enum Piece_Type
 {
@@ -175,10 +182,10 @@ inline int CountBitsSetMax15(Bitboard b)
 // Move helpers
 inline Square GetFrom(const Move move)
 {
-	return move & 0x1F;
+	return move & 0x3F;
 }
 
 inline Square GetTo(const Move move)
 {
-	return (move >> 5) & 0x1F;
+	return (move >> 6) & 0x3F;
 }
