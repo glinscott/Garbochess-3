@@ -32,22 +32,18 @@ void UnitTests()
 	ASSERT(CountBitsSet(b) == 0);
 
 	b = 0xFFFF;
-	ASSERT(GetLowSetBit(b) == 1);
 	ASSERT(CountBitsSet(b) == 16);
 
 	b = 0;
 	SetBit(b, 15);
-	ASSERT(GetLowSetBit(b) == 0x8000);
 	ASSERT(GetFirstBitIndex(b) == 15);
 	ASSERT(PopFirstBit(b) == 15);
 	ASSERT(b == 0);
 
 	b = 0x0001000100010001ULL;
-	ASSERT(GetLowSetBit(b) == 1);
 	ASSERT(GetFirstBitIndex(b) == 0);
 	ASSERT(CountBitsSet(b) == 4);
 	ASSERT(PopFirstBit(b) == 0);
-	ASSERT(GetLowSetBit(b) == 0x10000);
 	ASSERT(GetFirstBitIndex(b) == 16);
 	ASSERT(CountBitsSet(b) == 3);
 

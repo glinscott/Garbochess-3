@@ -1,4 +1,5 @@
 #include <cassert>
+#include <intrin.h>
 
 #if _DEBUG
 #define ASSERT(a) (!(a) ? throw : 0)
@@ -8,6 +9,9 @@
 
 typedef signed short s16;
 typedef unsigned short u16;
+
+typedef signed int s32;
+typedef unsigned int u32;
 
 typedef signed long long s64;
 typedef unsigned long long u64;
@@ -140,26 +144,24 @@ inline void XorClearBit(Bitboard &board, const Square square)
 	board ^= 1ULL << square;
 }
 
-inline u64 GetLowSetBit(const Bitboard &board)
-{
-	// TODO: asm
-	return board & (-(s64)board);
-}
-
 extern const int BitTable[64];
 
 inline Square GetFirstBitIndex(const Bitboard b)
 {
-	// TODO: asm
-	return Square(BitTable[((b & -s64(b)) * 0x218a392cd3d5dbfULL) >> 58]);
+#ifndef X64
+	return Square(BitTable[((b & -s64(b)) * 0x218a392cd3d5dbfULL) >> 58]); 
+#else
+	unsigned long index;
+	_BitScanForward64(&index, b);
+	return index;
+#endif
 }
 
 inline Square PopFirstBit(Bitboard &b)
 {
-	// TODO: asm
 	const Bitboard bb = b;
 	b &= (b - 1);
-	return Square(BitTable[((bb & -s64(bb)) * 0x218a392cd3d5dbfULL) >> 58]); 
+	return GetFirstBitIndex(bb);
 }
 
 inline int CountBitsSet(Bitboard b)
