@@ -264,7 +264,7 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 		}
 		else if (moveFlags == MoveTypeEnPassent)
 		{
-			const Square epSquare = (to - from < 0) ? from - 8 : from + 8;
+			const Square epSquare = (to - from < 0) ? to + 8 : to - 8;
 
 			ASSERT(Board[epSquare] == MakePiece(them, PAWN));
 			ASSERT(IsBitSet(Pieces[PAWN] & Colors[them], epSquare));
@@ -380,7 +380,7 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 		}
 		else if (moveFlags == MoveTypeEnPassent)
 		{
-			const Square epSquare = (to - from < 0) ? from - 8 : from + 8;
+			const Square epSquare = (to - from < 0) ? to + 8 : to - 8;
 
 			SetBit(Pieces[PAWN], epSquare);
 			SetBit(Colors[them], epSquare);
@@ -396,7 +396,7 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 			Fifty = 0;
 
 			const int kingRow = GetRow(from);
-			ASSERT((us == WHITE && kingRow == RANK_1) || (us == BLACK && kingRow == RANK_8));
+			ASSERT((us == WHITE && kingRow == RANK_1) | | (us == BLACK && kingRow == RANK_8));
 
 			Square rookFrom, rookTo;
 			if (GetColumn(to) == FILE_G)

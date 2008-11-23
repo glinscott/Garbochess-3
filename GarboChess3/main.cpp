@@ -88,7 +88,7 @@ int main()
 	Position position;
 	position.Initialize("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
-	std::printf("%d\n", perft(position, 5));
+	std::printf("%d\n", perft(position, 6));
 
 	return 0;
 }
