@@ -189,3 +189,6 @@ inline Square GetTo(const Move move)
 {
 	return (move >> 6) & 0x3F;
 }
+
+// Timer functions
+u64 GetCurrentMilliseconds();

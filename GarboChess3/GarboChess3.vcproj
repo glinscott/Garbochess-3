@@ -198,6 +198,10 @@
 				RelativePath=".\position.h"
 				>
 			</File>
+			<File
+				RelativePath=".\windows.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"

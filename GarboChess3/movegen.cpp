@@ -280,8 +280,8 @@ void GeneratePawnCaptures(Bitboard b, Move *moves, int &moveCount, const Color u
 	}
 }
 
-#define MoveGenerationLoop(func, piece)								\
-	b = position.Pieces[(piece)] & ourPieces;						\
+#define MoveGenerationLoop(func, pieceBitboard)						\
+	b = (pieceBitboard) & ourPieces;								\
 	while (b)														\
 	{																\
 		const Square from = PopFirstBit(b);							\
@@ -351,11 +351,10 @@ int GenerateQuietMoves(const Position &position, Move *moves)
 	}
 
 	// Normal piece moves
-	MoveGenerationLoop(GetKnightAttacks(from), KNIGHT);
-	MoveGenerationLoop(GetBishopAttacks(from, allPieces), BISHOP);
-	MoveGenerationLoop(GetRookAttacks(from, allPieces), ROOK);
-	MoveGenerationLoop(GetQueenAttacks(from, allPieces), QUEEN);
-	MoveGenerationLoop(GetKingAttacks(from), KING);
+	MoveGenerationLoop(GetKnightAttacks(from), position.Pieces[KNIGHT]);
+	MoveGenerationLoop(GetBishopAttacks(from, allPieces), position.Pieces[BISHOP] | position.Pieces[QUEEN]);
+	MoveGenerationLoop(GetRookAttacks(from, allPieces), position.Pieces[ROOK] | position.Pieces[QUEEN]);
+	MoveGenerationLoop(GetKingAttacks(from), position.Pieces[KING]);
 
 	return moveCount;
 }
@@ -393,11 +392,10 @@ int GenerateCaptures(const Position &position, Move *moves)
 	}
 
 	// Normal piece moves
-	MoveGenerationLoop(GetKnightAttacks(from), KNIGHT);
-	MoveGenerationLoop(GetBishopAttacks(from, allPieces), BISHOP);
-	MoveGenerationLoop(GetRookAttacks(from, allPieces), ROOK);
-	MoveGenerationLoop(GetQueenAttacks(from, allPieces), QUEEN);
-	MoveGenerationLoop(GetKingAttacks(from), KING);
+	MoveGenerationLoop(GetKnightAttacks(from), position.Pieces[KNIGHT]);
+	MoveGenerationLoop(GetBishopAttacks(from, allPieces), position.Pieces[BISHOP] | position.Pieces[QUEEN]);
+	MoveGenerationLoop(GetRookAttacks(from, allPieces), position.Pieces[ROOK] | position.Pieces[QUEEN]);
+	MoveGenerationLoop(GetKingAttacks(from), position.Pieces[KING]);
 
 	return moveCount;
 }
@@ -410,6 +408,12 @@ int GenerateCheckingMoves(const Position &position)
 
 int GenerateCheckEscapeMoves(const Position &position)
 {
+	const Color us = position.ToMove;
+	const Color them = FlipColor(us);
+
 	int moveCount = 0;
+
+	
+
 	return moveCount;
 }

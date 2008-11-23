@@ -52,6 +52,8 @@ void UnitTests()
 	ASSERT(CountBitsSet(b) == 3);
 
 	// TODO: unit test rook attacks and bishop attacks
+	// TODO: unit test move utility functions
+	// TODO: unit test square utility functions
 }
 
 u64 perft(Position &position, int depth)
@@ -84,6 +86,8 @@ void RunPerftSuite(int depthToVerify)
 	fopen_s(&file, "tests/perftsuite.epd", "rt");
 
 	char line[500];
+	u64 startTime = GetCurrentMilliseconds();
+	u64 totalCount = 0;
 	while (std::fgets(line, 500, file) != NULL)
 	{
 		Position position;
@@ -103,6 +107,7 @@ void RunPerftSuite(int depthToVerify)
 				if (depth <= depthToVerify)
 				{
 					u64 count = perft(position, depth);
+					totalCount += count;
 					if (count != expected)
 					{
 						if (!hasPrinted)
@@ -123,6 +128,11 @@ void RunPerftSuite(int depthToVerify)
 		printf("\n");
 	}
 
+	u64 totalTime = GetCurrentMilliseconds() - startTime;
+	printf("Total positions: %lld\n", totalCount);
+	printf("Seconds taken: %.2lf\n", totalTime / 1000.0);
+	printf("NPS: %.2lf\n", (totalCount / (totalTime / 1000.0)));
+
 	fclose(file);
 }
 
@@ -136,7 +146,7 @@ int main()
 	Position position;
 	position.Initialize("4k2r/8/8/8/8/8/8/4K3 w k - 0 1");
 
-	RunPerftSuite(6);
+	RunPerftSuite(4);
 
 	return 0;
 }
