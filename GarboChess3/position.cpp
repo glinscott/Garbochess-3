@@ -116,7 +116,7 @@ void Position::Initialize(const std::string &fen)
 		char column = fen[at - 1];
 		char row = fen[at++];
 
-		EnPassent = MakeSquare(7 - (row - 'a'), column - '1');
+		EnPassent = MakeSquare(7 - (row - '1'), column - 'a');
 	}
 	at++;
 
@@ -218,6 +218,12 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 		{
 			PawnHash ^= Position::Zobrist[them][PAWN][to];
 		}
+		else if (target == ROOK && CastleFlags)
+		{
+			Hash ^= Position::ZobristCastle[CastleFlags];
+			CastleFlags &= RookCastleFlagMask[to];
+			Hash ^= Position::ZobristCastle[CastleFlags];
+		}
 	}
 
 	// Remove the piece from where it was standing
@@ -284,7 +290,7 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 		if (CastleFlags)
 		{
 			Hash ^= Position::ZobristCastle[CastleFlags];
-			CastleFlags = 0;
+			CastleFlags &= ~(us == WHITE ? (CastleFlagWhiteKing | CastleFlagWhiteQueen) : (CastleFlagBlackKing | CastleFlagBlackQueen));
 			Hash ^= Position::ZobristCastle[CastleFlags];
 
 			if (moveFlags == MoveTypeCastle)
@@ -367,27 +373,7 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 	Board[from] = Board[to];
 
 	const Move moveFlags = move & MoveTypeMask;
-	if (piece == PAWN)
-	{
-		if (moveFlags == MoveTypePromotion)
-		{
-			const PieceType promotionType = GetPromotionMoveType(move);
-
-			XorClearBit(Pieces[promotionType], from);
-			SetBit(Pieces[PAWN], from);
-
-			Board[from] = MakePiece(us, PAWN);
-		}
-		else if (moveFlags == MoveTypeEnPassent)
-		{
-			const Square epSquare = (to - from < 0) ? to + 8 : to - 8;
-
-			SetBit(Pieces[PAWN], epSquare);
-			SetBit(Colors[them], epSquare);
-			Board[epSquare] = MakePiece(them, PAWN);
-		}		
-	}
-	else if (piece == KING)
+	if (piece == KING)
 	{
 		KingPos[us] = from;
 
@@ -396,7 +382,7 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 			Fifty = 0;
 
 			const int kingRow = GetRow(from);
-			ASSERT((us == WHITE && kingRow == RANK_1) | | (us == BLACK && kingRow == RANK_8));
+			ASSERT((us == WHITE && kingRow == RANK_1) || (us == BLACK && kingRow == RANK_8));
 
 			Square rookFrom, rookTo;
 			if (GetColumn(to) == FILE_G)
@@ -420,6 +406,23 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 			Board[rookFrom] = Board[rookTo];
 			Board[rookTo] = PIECE_NONE;
 		}
+	}
+	else if (moveFlags == MoveTypePromotion)
+	{
+		const PieceType promotionType = GetPromotionMoveType(move);
+
+		XorClearBit(Pieces[promotionType], from);
+		SetBit(Pieces[PAWN], from);
+
+		Board[from] = MakePiece(us, PAWN);
+	}
+	else if (moveFlags == MoveTypeEnPassent)
+	{
+		const Square epSquare = (to - from < 0) ? to + 8 : to - 8;
+
+		SetBit(Pieces[PAWN], epSquare);
+		SetBit(Colors[them], epSquare);
+		Board[epSquare] = MakePiece(them, PAWN);
 	}
 
 	if (moveUndo.Captured != PIECE_NONE)
@@ -461,7 +464,7 @@ bool Position::IsSquareAttacked(const Square square, const Color them) const
 		return true;
 	}
 
-	if (GetKingAttacks(square) & Pieces[KING])
+	if (GetKingAttacks(square) & Pieces[KING] & Colors[them])
 	{
 		return true;
 	}
@@ -473,12 +476,6 @@ void Position::VerifyBoard() const
 {
 	const bool verifyBoard = true;
 	const bool verifyHash = true;
-
-	if (verifyHash)
-	{
-		ASSERT(Hash == GetHash());
-		ASSERT(PawnHash == GetPawnHash());
-	}
 
 	if (verifyBoard)
 	{
@@ -503,5 +500,11 @@ void Position::VerifyBoard() const
 				}
 			}
 		}
+	}
+
+	if (verifyHash)
+	{
+		ASSERT(Hash == GetHash());
+		ASSERT(PawnHash == GetPawnHash());
 	}
 }

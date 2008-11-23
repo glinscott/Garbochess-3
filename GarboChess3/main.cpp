@@ -78,6 +78,54 @@ u64 perft(Position &position, int depth)
 	return result;
 }
 
+void RunPerftSuite(int depthToVerify)
+{
+	std::FILE* file;
+	fopen_s(&file, "tests/perftsuite.epd", "rt");
+
+	char line[500];
+	while (std::fgets(line, 500, file) != NULL)
+	{
+		Position position;
+		position.Initialize(line);
+
+		bool hasPrinted = false;
+		int first = -1;
+		for (int i = 0; line[i] != 0; i++)
+		{
+			if (line[i] == ';')
+			{
+				if (first == -1) first = i;
+
+				int depth;
+				u64 expected;
+				sscanf_s(line + i + 2, "%d %lld", &depth, &expected);
+				if (depth <= depthToVerify)
+				{
+					u64 count = perft(position, depth);
+					if (count != expected)
+					{
+						if (!hasPrinted)
+						{
+							std::string fen = line;
+							std::printf("\n%s\n", fen.substr(0, first).c_str());
+							hasPrinted = true;
+						}
+						std::printf("failed depth %d - expected %lld - got %lld\n", depth, expected, count);
+					}
+					else
+					{
+						std::printf("%d..", depth);
+					}
+				}
+			}
+		}
+		printf("\n");
+	}
+
+	fclose(file);
+}
+
 int main()
 {
 	InitializeBitboards();
@@ -86,9 +134,9 @@ int main()
 	UnitTests();
 
 	Position position;
-	position.Initialize("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+	position.Initialize("4k2r/8/8/8/8/8/8/4K3 w k - 0 1");
 
-	std::printf("%d\n", perft(position, 6));
+	RunPerftSuite(6);
 
 	return 0;
 }

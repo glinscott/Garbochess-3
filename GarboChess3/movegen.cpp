@@ -308,13 +308,13 @@ int GenerateQuietMoves(const Position &position, Move *moves)
 	// Generate pawn push, push promotions (non-queen), capture promotions (non-queen), pawn double hops
 	if (us == WHITE)
 	{
-		GeneratePawnQuietMoves<RANK_2, RANK_4, RANK_7>(position.Pieces[PAWN] & ourPieces, moves, moveCount, us, targets, position.Pieces[them]);
+		GeneratePawnQuietMoves<RANK_2, RANK_4, RANK_7>(position.Pieces[PAWN] & ourPieces, moves, moveCount, us, targets, position.Colors[them]);
 
 		castleFlags = position.CastleFlags;
 	}
 	else
 	{
-		GeneratePawnQuietMoves<RANK_7, RANK_5, RANK_2>(position.Pieces[PAWN] & ourPieces, moves, moveCount, us, targets, position.Pieces[them]);
+		GeneratePawnQuietMoves<RANK_7, RANK_5, RANK_2>(position.Pieces[PAWN] & ourPieces, moves, moveCount, us, targets, position.Colors[them]);
 
 		castleFlags = position.CastleFlags >> 2;
 	}
@@ -363,9 +363,10 @@ int GenerateQuietMoves(const Position &position, Move *moves)
 int GenerateCaptures(const Position &position, Move *moves)
 {
 	const Color us = position.ToMove;
+	const Color them = FlipColor(us);
 	const Bitboard ourPieces = position.Colors[us];
 	const Bitboard allPieces = position.Colors[0] | position.Colors[1];
-	const Bitboard targets = position.Colors[FlipColor(us)];
+	const Bitboard targets = position.Colors[them];
 	
 	int moveCount = 0;
 	Bitboard b;
@@ -383,7 +384,7 @@ int GenerateCaptures(const Position &position, Move *moves)
 	// En Passent
 	if (position.EnPassent != -1)
 	{
-		b = position.Pieces[PAWN] & ourPieces & GetPawnAttacks(position.EnPassent, FlipColor(us));
+		b = position.Pieces[PAWN] & ourPieces & GetPawnAttacks(position.EnPassent, them);
 		while (b)
 		{
 			Square from = PopFirstBit(b);
