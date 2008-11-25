@@ -2,8 +2,8 @@ void InitializeBitboards();
 
 int GenerateQuietMoves(const Position &position, Move *moves);
 int GenerateCaptures(const Position &position, Move *moves);
-int GenerateCheckingMoves(const Position &position);
-int GenerateCheckEscapeMoves(const Position &position);
+int GenerateCheckingMoves(const Position &position, Move *moves);
+int GenerateCheckEscapeMoves(const Position &position, Move *moves);
 
 // Attack generation
 

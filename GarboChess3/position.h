@@ -24,12 +24,18 @@ public:
 	int CastleFlags;
 	Square EnPassent;
 	int Fifty;
+
+	inline Bitboard GetAllPieces() const { return Colors[WHITE] | Colors[BLACK]; }
 	
 	static void StaticInitialize();
 	void Initialize(const std::string &fen);
 	void MakeMove(const Move move, MoveUndo &moveUndo);
 	void UnmakeMove(const Move move, const MoveUndo &moveUndo);
-	bool IsSquareAttacked(const Square square, const Color them) const;
+
+	inline bool IsSquareAttacked(const Square square, const Color them) const { return IsSquareAttacked(square, them, GetAllPieces()); }
+	bool IsSquareAttacked(const Square square, const Color them, const Bitboard allPieces) const;
+	Bitboard GetAttacksTo(const Square square) const;
+//	inline Bitboard GetPinnedPieces(); // TODO
 
 private:
 	void VerifyBoard() const;

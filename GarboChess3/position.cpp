@@ -443,7 +443,7 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 #endif
 }
 
-bool Position::IsSquareAttacked(const Square square, const Color them) const
+bool Position::IsSquareAttacked(const Square square, const Color them, const Bitboard allPieces) const
 {
 	if ((GetPawnAttacks(square, FlipColor(them)) & Pieces[PAWN] & Colors[them]) ||
 		(GetKnightAttacks(square) & Pieces[KNIGHT] & Colors[them]))
@@ -451,7 +451,6 @@ bool Position::IsSquareAttacked(const Square square, const Color them) const
 		return true;
 	}
 
-	const Bitboard allPieces = Colors[WHITE] | Colors[BLACK];
 	const Bitboard bishopQueen = Pieces[BISHOP] | Pieces[QUEEN];
 	if (GetBishopAttacks(square, allPieces) & bishopQueen & Colors[them])
 	{
@@ -472,6 +471,19 @@ bool Position::IsSquareAttacked(const Square square, const Color them) const
 	return false;
 }
 
+// Returns all of the pieces (from both colors) that attack the given square
+// Can be used to determine pinned pieces, or checking pieces
+Bitboard Position::GetAttacksTo(const Square square) const
+{
+	const Bitboard allPieces = GetAllPieces();
+	return
+		((GetPawnAttacks(square, WHITE) | GetPawnAttacks(square, BLACK)) & Pieces[PAWN]) |
+		(GetKnightAttacks(square)) |
+		(GetBishopAttacks(square, allPieces) & (Pieces[BISHOP] | Pieces[QUEEN])) |
+		(GetRookAttacks(square, allPieces) & (Pieces[ROOK] | Pieces[QUEEN])) |
+		(GetKingAttacks(square));
+}
+
 void Position::VerifyBoard() const
 {
 	const bool verifyBoard = true;
@@ -487,7 +499,7 @@ void Position::VerifyBoard() const
 			if (pieceType == PIECE_NONE)
 			{
 				ASSERT(!IsBitSet(Pieces[pieceType], i));
-				ASSERT(!IsBitSet(Colors[WHITE] | Colors[BLACK], i));
+				ASSERT(!IsBitSet(GetAllPieces(), i));
 			}
 			else
 			{

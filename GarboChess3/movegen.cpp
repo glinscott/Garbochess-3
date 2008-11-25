@@ -400,20 +400,56 @@ int GenerateCaptures(const Position &position, Move *moves)
 	return moveCount;
 }
 
-int GenerateCheckingMoves(const Position &position)
+int GenerateCheckingMoves(const Position &position, Move *moves)
 {
 	int moveCount = 0;
 	return moveCount;
 }
 
-int GenerateCheckEscapeMoves(const Position &position)
+int GenerateCheckEscapeMoves(const Position &position, Move *moves)
 {
 	const Color us = position.ToMove;
 	const Color them = FlipColor(us);
+	const Square kingSquare = position.KingPos[us];
 
 	int moveCount = 0;
 
+	// King moves
+	Bitboard allPiecesMinusKing = position.GetAllPieces();
+	XorClearBit(allPiecesMinusKing, kingSquare);
+	Bitboard b = GetKingAttacks(kingSquare);
+	while (b)
+	{
+		const Square to = PopFirstBit(b);
+		if (!position.IsSquareAttacked(kingSquare, them, allPiecesMinusKing))
+		{
+			moves[moveCount++] = GenerateMove(kingSquare, to);
+		}
+	}
+
+	// Check for number of checking pieces
+	const Bitboard attacksToKing = position.GetAttacksTo(kingSquare);
+	const Bitboard checkingPieces = attacksToKing & position.Colors[them];
+	ASSERT(checkingPieces != 0);	// We should have some checking pieces if we are in check
 	
+	// If there are multiple checking pieces, the only way to escape check is by moving our poor king.
+	if (!(checkingPieces & (checkingPieces - 1)))
+	{
+		// Only one checking piece.  We have two possibilities to save our king:
+		// 1. Block the checking piece
+		// 2. Capture the checking piece
+		Square checkingSquare = GetFirstBitIndex(checkingPieces);
+
+		// First, try to block the checking piece
+// TODO
+//		const Bitboard pinnedPieces = position.GetPinnedPieces(kingSquare, ;
+
+
+		// Second, try to capture the checking piece
+//		MoveGenerationLoop(GetKnightAttacks(from), position.Pieces[KNIGHT]);
+//		MoveGenerationLoop(GetBishopAttacks(from, allPieces), position.Pieces[BISHOP] | position.Pieces[QUEEN]);
+//		MoveGenerationLoop(GetRookAttacks(from, allPieces), position.Pieces[ROOK] | position.Pieces[QUEEN]);
+	}
 
 	return moveCount;
 }
