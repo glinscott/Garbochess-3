@@ -50,6 +50,7 @@ void UnitTests()
 	// TODO: unit test rook attacks and bishop attacks
 	// TODO: unit test move utility functions
 	// TODO: unit test square utility functions
+	// TODO: unit test Position::GetAttacksTo and Position::GetPinnedPieces
 }
 
 u64 perft(Position &position, int depth)

@@ -35,7 +35,7 @@ public:
 	inline bool IsSquareAttacked(const Square square, const Color them) const { return IsSquareAttacked(square, them, GetAllPieces()); }
 	bool IsSquareAttacked(const Square square, const Color them, const Bitboard allPieces) const;
 	Bitboard GetAttacksTo(const Square square) const;
-//	inline Bitboard GetPinnedPieces(); // TODO
+	Bitboard GetPinnedPieces(const Square square, const Color us) const;
 
 private:
 	void VerifyBoard() const;

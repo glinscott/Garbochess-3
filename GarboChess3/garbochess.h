@@ -1,4 +1,3 @@
-#include <cassert>
 #include <intrin.h>
 
 #if _DEBUG

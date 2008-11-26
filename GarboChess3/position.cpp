@@ -3,8 +3,6 @@
 #include "movegen.h"
 #include "mersenne.h"
 
-#include <string>
-
 static MTRand Random;
 static u64 GetRand64()
 {
@@ -260,6 +258,8 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 			// the pawn at the destination square with the promoted piece.
 			const PieceType promotionType = GetPromotionMoveType(move);
 
+			ASSERT(Board[to] == MakePiece(us, PAWN));
+
 			XorClearBit(Pieces[PAWN], to);
 			SetBit(Pieces[promotionType], to);
 
@@ -482,6 +482,42 @@ Bitboard Position::GetAttacksTo(const Square square) const
 		(GetBishopAttacks(square, allPieces) & (Pieces[BISHOP] | Pieces[QUEEN])) |
 		(GetRookAttacks(square, allPieces) & (Pieces[ROOK] | Pieces[QUEEN])) |
 		(GetKingAttacks(square));
+}
+
+// Gets all the pieces that are pinned to a given square.  Pinned is defined as being of our color, and
+// blocking an enemy piece from capturing the piece at the given square.
+Bitboard Position::GetPinnedPieces(const Square square, const Color us) const
+{
+	// We do this by determining all the enemy pieces that can potentially be attacking us along the attacking
+	// files, then intersecting their attacks with our "semi-pinned" pieces.  Semi-pinned is defined as being
+	// the first friendly piece along the direction.
+	Bitboard pinned = 0;
+
+	const Bitboard allPieces = GetAllPieces();
+	const Color them = FlipColor(us);
+
+	// TODO: We can use the rook file/rank bitboard instead of the "expensive" GetRookAttacks here.  Same
+	// for the bishop attacks.
+	const Bitboard rookAttacks = GetRookAttacks(square, 0); 
+	const Bitboard semiRookPinned = rookAttacks & Colors[us];
+	Bitboard b = rookAttacks & Colors[them] & (Pieces[ROOK] | Pieces[QUEEN]);
+	while (b)
+	{
+		Square from = PopFirstBit(b);
+		// TODO: This could be done by looking up the "in-between" squares in a [64][64].
+		pinned |= GetRookAttacks(square, allPieces) & semiRookPinned;
+	}
+
+	const Bitboard bishopAttacks = GetBishopAttacks(square, 0);
+	const Bitboard semiBishopPinned = bishopAttacks & Colors[us];
+	b = bishopAttacks & Colors[them] & (Pieces[BISHOP] | Pieces[QUEEN]);
+	while (b)
+	{
+		Square from = PopFirstBit(b);
+		pinned |= GetBishopAttacks(square, allPieces) & semiBishopPinned;
+	}
+
+	return pinned;
 }
 
 void Position::VerifyBoard() const

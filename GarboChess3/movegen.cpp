@@ -192,6 +192,16 @@ void InitializeBitboards()
 			}
 		}
 	}
+
+	for (Square from = 0; from < 64; from++)
+	{
+		for (Square to = 0; to < 64; to++)
+		{
+			SquaresBetween[from][to] = 0;
+
+			// TODO			
+		}
+	}
 }
 
 template<int homeRow, int targetRow, int promotionRow>
@@ -415,7 +425,8 @@ int GenerateCheckEscapeMoves(const Position &position, Move *moves)
 	int moveCount = 0;
 
 	// King moves
-	Bitboard allPiecesMinusKing = position.GetAllPieces();
+	const Bitboard allPieces = position.GetAllPieces();
+	Bitboard allPiecesMinusKing = allPieces;
 	XorClearBit(allPiecesMinusKing, kingSquare);
 	Bitboard b = GetKingAttacks(kingSquare);
 	while (b)
@@ -438,17 +449,22 @@ int GenerateCheckEscapeMoves(const Position &position, Move *moves)
 		// Only one checking piece.  We have two possibilities to save our king:
 		// 1. Block the checking piece
 		// 2. Capture the checking piece
-		Square checkingSquare = GetFirstBitIndex(checkingPieces);
+		const Square checkingSquare = GetFirstBitIndex(checkingPieces);
+		const Bitboard pinnedPieces = position.GetPinnedPieces(kingSquare, us);
 
-		// First, try to block the checking piece
-// TODO
-//		const Bitboard pinnedPieces = position.GetPinnedPieces(kingSquare, ;
+		// First, try to capture the checking piece, without using a pinned piece
+		Bitboard targets = checkingPieces;
+		const Bitboard ourPieces = position.Colors[us];
+		// TODO: pawn captures, e.p.
+		MoveGenerationLoop(GetKnightAttacks(from), position.Pieces[KNIGHT] ^ pinnedPieces);
+		MoveGenerationLoop(GetBishopAttacks(from, allPieces), (position.Pieces[BISHOP] | position.Pieces[QUEEN]) ^ pinnedPieces);
+		MoveGenerationLoop(GetRookAttacks(from, allPieces), (position.Pieces[ROOK] | position.Pieces[QUEEN]) ^ pinnedPieces);
+		
+		// Second, try to block the checking piece, without moving a pinned piece.  But only if it's a slider
+		if (GetPieceType(position.Board[checkingSquare]) >= BISHOP)
+		{
 
-
-		// Second, try to capture the checking piece
-//		MoveGenerationLoop(GetKnightAttacks(from), position.Pieces[KNIGHT]);
-//		MoveGenerationLoop(GetBishopAttacks(from, allPieces), position.Pieces[BISHOP] | position.Pieces[QUEEN]);
-//		MoveGenerationLoop(GetRookAttacks(from, allPieces), position.Pieces[ROOK] | position.Pieces[QUEEN]);
+		}
 	}
 
 	return moveCount;

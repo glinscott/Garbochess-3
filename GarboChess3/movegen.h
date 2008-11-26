@@ -64,6 +64,14 @@ inline Bitboard GetKingAttacks(const Square square)
 	return KingAttacks[square];
 }
 
+// Misc.
+extern Bitboard SquaresBetween[from][to];
+
+inline Bitboard GetSquaresBetween(const Square from, const Square to)
+{
+	return SquaresBetween[from][to];
+}
+
 // Move generation
 inline Move GenerateMove(const Square from, const Square to)
 {
