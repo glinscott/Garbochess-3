@@ -504,8 +504,7 @@ Bitboard Position::GetPinnedPieces(const Square square, const Color us) const
 	while (b)
 	{
 		Square from = PopFirstBit(b);
-		// TODO: This could be done by looking up the "in-between" squares in a [64][64].
-		pinned |= GetRookAttacks(square, allPieces) & semiRookPinned;
+		pinned |= GetSquaresBetween(square, from) & semiRookPinned;
 	}
 
 	const Bitboard bishopAttacks = GetBishopAttacks(square, 0);
@@ -514,7 +513,7 @@ Bitboard Position::GetPinnedPieces(const Square square, const Color us) const
 	while (b)
 	{
 		Square from = PopFirstBit(b);
-		pinned |= GetBishopAttacks(square, allPieces) & semiBishopPinned;
+		pinned |= GetSquaresBetween(square, from) & semiBishopPinned;
 	}
 
 	return pinned;

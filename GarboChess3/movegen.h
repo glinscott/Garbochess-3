@@ -65,7 +65,7 @@ inline Bitboard GetKingAttacks(const Square square)
 }
 
 // Misc.
-extern Bitboard SquaresBetween[from][to];
+extern Bitboard SquaresBetween[64][64];
 
 inline Bitboard GetSquaresBetween(const Square from, const Square to)
 {

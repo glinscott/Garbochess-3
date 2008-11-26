@@ -87,6 +87,8 @@ Bitboard RAttacks[0x19000];
 
 Bitboard KingAttacks[64];
 
+Bitboard SquaresBetween[64][64];
+
 Bitboard SlidingAttacks(Square sq, Bitboard block, int dirs, int deltas[][2], int fmin=0, int fmax=7, int rmin=0, int rmax=7)
 {
 	Bitboard result = 0ULL;
@@ -197,9 +199,18 @@ void InitializeBitboards()
 	{
 		for (Square to = 0; to < 64; to++)
 		{
-			SquaresBetween[from][to] = 0;
+			Bitboard usThem = 0;
+			SetBit(usThem, from);
+			SetBit(usThem, to);
 
-			// TODO			
+			if (GetRow(from) == GetRow(to) || GetColumn(from) == GetColumn(to))
+			{
+				SquaresBetween[from][to] = GetRookAttacks(from, usThem) & GetRookAttacks(to, usThem);
+			}
+			else
+			{
+				SquaresBetween[from][to] = GetBishopAttacks(from, usThem) & GetBishopAttacks(to, usThem);
+			}
 		}
 	}
 }
@@ -450,20 +461,75 @@ int GenerateCheckEscapeMoves(const Position &position, Move *moves)
 		// 1. Block the checking piece
 		// 2. Capture the checking piece
 		const Square checkingSquare = GetFirstBitIndex(checkingPieces);
-		const Bitboard pinnedPieces = position.GetPinnedPieces(kingSquare, us);
+		const Bitboard notPinnedPieces = ~position.GetPinnedPieces(kingSquare, us);
 
 		// First, try to capture the checking piece, without using a pinned piece
+		const Bitboard ourPieces = position.Colors[us] & notPinnedPieces;
+
+		// Pawn captures are as usual, special, and annoying
+		b = GetPawnAttacks(checkingSquare, them) & (position.Pieces[PAWN] & ourPieces);
+		while (b)
+		{
+			Square from = PopFirstBit(b);
+			if (GetRow(checkingSquare) == RANK_1 || GetRow(checkingSquare) == RANK_8)
+			{
+				moves[moveCount++] = GeneratePromotionMove(from, checkingSquare, PromotionTypeQueen);
+				moves[moveCount++] = GeneratePromotionMove(from, checkingSquare, PromotionTypeKnight);
+				moves[moveCount++] = GeneratePromotionMove(from, checkingSquare, PromotionTypeRook);
+				moves[moveCount++] = GeneratePromotionMove(from, checkingSquare, PromotionTypeBishop);
+			}
+			else
+			{
+				moves[moveCount++] = GenerateMove(from, checkingSquare);
+			}
+		}
+
+		// Initialize the targets to be the checking piece
 		Bitboard targets = checkingPieces;
-		const Bitboard ourPieces = position.Colors[us];
-		// TODO: pawn captures, e.p.
-		MoveGenerationLoop(GetKnightAttacks(from), position.Pieces[KNIGHT] ^ pinnedPieces);
-		MoveGenerationLoop(GetBishopAttacks(from, allPieces), (position.Pieces[BISHOP] | position.Pieces[QUEEN]) ^ pinnedPieces);
-		MoveGenerationLoop(GetRookAttacks(from, allPieces), (position.Pieces[ROOK] | position.Pieces[QUEEN]) ^ pinnedPieces);
-		
-		// Second, try to block the checking piece, without moving a pinned piece.  But only if it's a slider
+
+		// Try to block the checking piece, without moving a pinned piece.  But only if it's a slider
 		if (GetPieceType(position.Board[checkingSquare]) >= BISHOP)
 		{
+			// Try to block with a pawn
+			const Bitboard squaresBetween = GetSquaresBetween(kingSquare, checkingSquare);
 
+			// Evil code to determine if a pawn can block the checking piece
+			// TODO evil code
+			if (us == WHITE)
+			{
+			}
+			else
+			{
+			}
+
+
+			// Allow the other pieces to try to land on the between squares
+			targets |= squaresBetween;
+		}
+
+		// Now, actually generate the captures (and potentially blocking moves) - this correctly respects pinned pieces
+		MoveGenerationLoop(GetKnightAttacks(from), position.Pieces[KNIGHT]);
+		MoveGenerationLoop(GetBishopAttacks(from, allPieces), position.Pieces[BISHOP] | position.Pieces[QUEEN]);
+		MoveGenerationLoop(GetRookAttacks(from, allPieces), position.Pieces[ROOK] | position.Pieces[QUEEN]);
+
+		if (position.EnPassent != -1)
+		{
+			// We could potentially be checked by this piece.  Discovered checks will be handled elsewhere.  So, the only
+			// move that could save us here is an e.p. capture.
+			b = GetPawnAttacks(position.EnPassent, them) & ourPieces;
+			while (b)
+			{
+				Square from = PopFirstBit(b);
+				// Unfortunately, the capture has to be a legal move.  So, check if by moving our pawn, and removing the other
+				// pawn cause a revealed check.
+				Bitboard allPiecesMinusEp = allPieces;
+				XorClearBit(allPiecesMinusEp, from);
+				XorClearBit(allPiecesMinusEp, checkingSquare);
+				if (!position.IsSquareAttacked(kingSquare, them, allPiecesMinusEp))
+				{
+					moves[moveCount++] = GenerateEnPassentMove(from, position.EnPassent);
+				}
+			}
 		}
 	}
 
