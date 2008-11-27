@@ -439,11 +439,11 @@ int GenerateCheckEscapeMoves(const Position &position, Move *moves)
 	const Bitboard allPieces = position.GetAllPieces();
 	Bitboard allPiecesMinusKing = allPieces;
 	XorClearBit(allPiecesMinusKing, kingSquare);
-	Bitboard b = GetKingAttacks(kingSquare);
+	Bitboard b = GetKingAttacks(kingSquare) & ~position.Colors[us];
 	while (b)
 	{
 		const Square to = PopFirstBit(b);
-		if (!position.IsSquareAttacked(kingSquare, them, allPiecesMinusKing))
+		if (!position.IsSquareAttacked(to, them, allPiecesMinusKing))
 		{
 			moves[moveCount++] = GenerateMove(kingSquare, to);
 		}
@@ -494,14 +494,45 @@ int GenerateCheckEscapeMoves(const Position &position, Move *moves)
 			const Bitboard squaresBetween = GetSquaresBetween(kingSquare, checkingSquare);
 
 			// Evil code to determine if a pawn can block the checking piece
-			// TODO evil code
-			if (us == WHITE)
+			b = position.Pieces[PAWN] & ourPieces;
+			while (b)
 			{
-			}
-			else
-			{
-			}
+				const Square from = PopFirstBit(b);
 
+				Bitboard pawnMoves = GetPawnMoves(from, us) & ~allPieces;
+				if (pawnMoves)
+				{
+					const int row = GetRow(from);
+					// Double moves
+					if (us == WHITE && row == RANK_2)
+					{
+						SetBit(pawnMoves, MakeSquare(RANK_4, GetColumn(from)));
+					}
+					else if (us == BLACK && row == RANK_7)
+					{
+						SetBit(pawnMoves, MakeSquare(RANK_5, GetColumn(from)));
+					}
+
+					pawnMoves &= squaresBetween & ~allPieces;
+
+					while (pawnMoves)
+					{
+						const Square to = PopFirstBit(pawnMoves);
+						if (GetRow(to) == RANK_1 || GetRow(to) == RANK_8)
+						{
+							// Promotions
+							moves[moveCount++] = GeneratePromotionMove(from, to, PromotionTypeQueen);
+							moves[moveCount++] = GeneratePromotionMove(from, to, PromotionTypeKnight);
+							moves[moveCount++] = GeneratePromotionMove(from, to, PromotionTypeRook);
+							moves[moveCount++] = GeneratePromotionMove(from, to, PromotionTypeBishop);
+						}
+						else
+						{
+							moves[moveCount++] = GenerateMove(from, to);
+						}
+					}
+				}
+			}
 
 			// Allow the other pieces to try to land on the between squares
 			targets |= squaresBetween;
@@ -521,7 +552,7 @@ int GenerateCheckEscapeMoves(const Position &position, Move *moves)
 			{
 				Square from = PopFirstBit(b);
 				// Unfortunately, the capture has to be a legal move.  So, check if by moving our pawn, and removing the other
-				// pawn cause a revealed check.
+				// pawn causes a revealed check.
 				Bitboard allPiecesMinusEp = allPieces;
 				XorClearBit(allPiecesMinusEp, from);
 				XorClearBit(allPiecesMinusEp, checkingSquare);

@@ -1,2 +1,2 @@
-- 8.5 million NPS on perft currently - 32 bit
-- 16.2 million NPS on perft 64bit
+- 9.2 million NPS on perft currently - 32 bit
+- 17.9 million NPS on perft 64bit

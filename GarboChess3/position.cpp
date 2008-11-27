@@ -125,6 +125,66 @@ void Position::Initialize(const std::string &fen)
 	PawnHash = GetPawnHash();
 }
 
+std::string Position::GetFen() const
+{
+	std::string result;
+
+	for (int row = RANK_8; row <= RANK_1; row++)
+	{
+		if (row != RANK_8)
+		{
+			result += '/';
+		}
+		
+		int empty = 0;
+		for (int column = FILE_A; column <= FILE_H; column++)
+		{
+			Piece piece = Board[MakeSquare(row, column)];
+			if (piece == PIECE_NONE)
+			{
+				empty++;
+			}
+			else
+			{
+				if (empty != 0)
+				{
+					result += (empty + '0');
+				}
+				empty = 0;
+
+				char pieceChar;
+				PieceType pieceType = GetPieceType(piece);
+				switch (pieceType)
+				{
+				case PAWN: pieceChar = 'p'; break;
+				case KNIGHT: pieceChar = 'n'; break;
+				case BISHOP: pieceChar = 'b'; break;
+				case ROOK: pieceChar = 'r'; break;
+				case QUEEN: pieceChar = 'q'; break;
+				case KING: pieceChar = 'k'; break;
+				}
+
+				if (GetPieceColor(piece) == WHITE) pieceChar += 'A' - 'a';
+
+				result += pieceChar;
+			}
+		}
+
+		if (empty != 0)
+		{
+			result += (empty + '0');
+		}
+	}
+
+	// ToMove
+	if (ToMove == WHITE) result += " w"; else result += " b";
+	
+	// TODO: castle flags, e.p.
+	result += " - - 0 0";
+
+	return result;
+}
+
 u64 Position::GetHash() const
 {
 	u64 result = 0;
@@ -477,11 +537,11 @@ Bitboard Position::GetAttacksTo(const Square square) const
 {
 	const Bitboard allPieces = GetAllPieces();
 	return
-		((GetPawnAttacks(square, WHITE) | GetPawnAttacks(square, BLACK)) & Pieces[PAWN]) |
-		(GetKnightAttacks(square)) |
+		(((GetPawnAttacks(square, WHITE) & Colors[BLACK]) | (GetPawnAttacks(square, BLACK) & Colors[WHITE])) & Pieces[PAWN]) |
+		(GetKnightAttacks(square) & Pieces[KNIGHT]) |
 		(GetBishopAttacks(square, allPieces) & (Pieces[BISHOP] | Pieces[QUEEN])) |
 		(GetRookAttacks(square, allPieces) & (Pieces[ROOK] | Pieces[QUEEN])) |
-		(GetKingAttacks(square));
+		(GetKingAttacks(square) & Pieces[KING]);
 }
 
 // Gets all the pieces that are pinned to a given square.  Pinned is defined as being of our color, and
@@ -496,24 +556,22 @@ Bitboard Position::GetPinnedPieces(const Square square, const Color us) const
 	const Bitboard allPieces = GetAllPieces();
 	const Color them = FlipColor(us);
 
-	// TODO: We can use the rook file/rank bitboard instead of the "expensive" GetRookAttacks here.  Same
-	// for the bishop attacks.
-	const Bitboard rookAttacks = GetRookAttacks(square, 0); 
+	const Bitboard rookAttacks = GetRookAttacks(square, allPieces); 
 	const Bitboard semiRookPinned = rookAttacks & Colors[us];
-	Bitboard b = rookAttacks & Colors[them] & (Pieces[ROOK] | Pieces[QUEEN]);
+	Bitboard b = GetRookAttacks(square, 0) & Colors[them] & (Pieces[ROOK] | Pieces[QUEEN]);
 	while (b)
 	{
 		Square from = PopFirstBit(b);
-		pinned |= GetSquaresBetween(square, from) & semiRookPinned;
+		pinned |= GetRookAttacks(from, allPieces) & semiRookPinned;
 	}
 
-	const Bitboard bishopAttacks = GetBishopAttacks(square, 0);
+	const Bitboard bishopAttacks = GetBishopAttacks(square, allPieces);
 	const Bitboard semiBishopPinned = bishopAttacks & Colors[us];
-	b = bishopAttacks & Colors[them] & (Pieces[BISHOP] | Pieces[QUEEN]);
+	b = GetBishopAttacks(square, 0) & Colors[them] & (Pieces[BISHOP] | Pieces[QUEEN]);
 	while (b)
 	{
 		Square from = PopFirstBit(b);
-		pinned |= GetSquaresBetween(square, from) & semiBishopPinned;
+		pinned |= GetBishopAttacks(from, allPieces) & semiBishopPinned;
 	}
 
 	return pinned;

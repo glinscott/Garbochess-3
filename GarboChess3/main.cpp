@@ -60,18 +60,58 @@ u64 perft(Position &position, int depth)
 	u64 result = 0;
 
 	Move moves[256];
-	int moveCount = GenerateQuietMoves(position, moves);
-	moveCount += GenerateCaptures(position, moves + moveCount);
-
-	for (int i = 0; i < moveCount; i++)
+	if (!position.IsCheck())
 	{
-		MoveUndo moveUndo;
-		position.MakeMove(moves[i], moveUndo);
-		if (!position.IsSquareAttacked(position.KingPos[FlipColor(position.ToMove)], position.ToMove))
+		int moveCount = GenerateQuietMoves(position, moves);
+		moveCount += GenerateCaptures(position, moves + moveCount);
+
+		for (int i = 0; i < moveCount; i++)
 		{
-			result += perft(position, depth - 1);
+			MoveUndo moveUndo;
+			position.MakeMove(moves[i], moveUndo);
+			if (!position.CanCaptureKing())
+			{
+				result += perft(position, depth - 1);
+			}
+			position.UnmakeMove(moves[i], moveUndo);
 		}
-		position.UnmakeMove(moves[i], moveUndo);
+	}
+	else
+	{
+		int moveCount = GenerateCheckEscapeMoves(position, moves);
+
+		const bool verifyCheckEscape = false;
+		if (verifyCheckEscape)
+		{
+
+			Move vMoves[256];
+			int vCount = GenerateQuietMoves(position, vMoves);
+			vCount += GenerateCaptures(position, vMoves + vCount);
+			for (int i = 0; i < vCount; i++)
+			{
+				MoveUndo moveUndo;
+				position.MakeMove(vMoves[i], moveUndo);
+				bool bad = false;
+				if (position.CanCaptureKing()) bad = true;
+				position.UnmakeMove(vMoves[i], moveUndo);
+				if (bad) { vCount--; i--; for (int j = i + 1; j < vCount; j++) vMoves[j] = vMoves[j + 1]; }
+			}
+
+			if (vCount != moveCount)
+			{
+				printf("foobar %d,%d\n%s\n", vCount, moveCount, position.GetFen().c_str());
+			}
+		}
+
+		for (int i = 0; i < moveCount; i++)
+		{
+			MoveUndo moveUndo;
+			position.MakeMove(moves[i], moveUndo);
+			// We shouldn't leave our king hanging
+			ASSERT(!position.CanCaptureKing());
+			result += perft(position, depth - 1);
+			position.UnmakeMove(moves[i], moveUndo);
+		}
 	}
 
 	return result;
@@ -123,6 +163,7 @@ void RunPerftSuite(int depthToVerify)
 			}
 		}
 		printf("\n");
+		break;
 	}
 
 	u64 totalTime = GetCurrentMilliseconds() - startTime;
@@ -141,9 +182,10 @@ int main()
 	UnitTests();
 
 	Position position;
-	position.Initialize("4k2r/8/8/8/8/8/8/4K3 w k - 0 1");
+	position.Initialize("r2k3r/p1ppqNb1/bn2pQp1/3P4/1p2P3/2N4p/PPPBBPPP/R3K2R b - - 0 0");
+	perft(position, 2);
 
-	RunPerftSuite(4);
+	RunPerftSuite(6);
 
 	return 0;
 }
