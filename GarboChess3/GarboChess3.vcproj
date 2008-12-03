@@ -211,6 +211,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\search.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\search.h"
+				>
+			</File>
+			<File
 				RelativePath=".\windows.cpp"
 				>
 			</File>
