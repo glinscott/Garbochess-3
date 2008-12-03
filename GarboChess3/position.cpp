@@ -550,8 +550,7 @@ Bitboard Position::GetPinnedPieces(const Square square, const Color us) const
 	const Bitboard allPieces = GetAllPieces();
 	const Color them = FlipColor(us);
 
-	const Bitboard rookAttacks = GetRookAttacks(square, allPieces); 
-	const Bitboard semiRookPinned = rookAttacks & Colors[us];
+	const Bitboard semiRookPinned = GetRookAttacks(square, allPieces) & Colors[us];
 	Bitboard b = GetRookAttacks(square, 0) & Colors[them] & (Pieces[ROOK] | Pieces[QUEEN]);
 	while (b)
 	{
@@ -559,8 +558,7 @@ Bitboard Position::GetPinnedPieces(const Square square, const Color us) const
 		pinned |= GetRookAttacks(from, allPieces) & semiRookPinned;
 	}
 
-	const Bitboard bishopAttacks = GetBishopAttacks(square, allPieces);
-	const Bitboard semiBishopPinned = bishopAttacks & Colors[us];
+	const Bitboard semiBishopPinned = GetBishopAttacks(square, allPieces) & Colors[us];
 	b = GetBishopAttacks(square, 0) & Colors[them] & (Pieces[BISHOP] | Pieces[QUEEN]);
 	while (b)
 	{
