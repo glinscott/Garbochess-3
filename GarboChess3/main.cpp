@@ -163,7 +163,6 @@ void RunPerftSuite(int depthToVerify)
 			}
 		}
 		printf("\n");
-		break;
 	}
 
 	u64 totalTime = GetCurrentMilliseconds() - startTime;
@@ -185,7 +184,7 @@ int main()
 	position.Initialize("r2k3r/p1ppqNb1/bn2pQp1/3P4/1p2P3/2N4p/PPPBBPPP/R3K2R b - - 0 0");
 	perft(position, 2);
 
-	RunPerftSuite(6);
+	RunPerftSuite(4);
 
 	return 0;
 }
