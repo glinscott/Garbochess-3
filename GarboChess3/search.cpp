@@ -5,11 +5,12 @@
 
 int evaluate(const Position &position)
 {
+	return 0;
 }
 
 int see(Position &position, Move move)
 {
-
+	return 0;
 }
 
 int qSearch(Position &position, int alpha, int beta, int depth)
@@ -31,6 +32,7 @@ int qSearch(Position &position, int alpha, int beta, int depth)
 	}
 	
 	Move moves[64];
+	int moveScore[64];
 	int moveCount = GenerateCaptures(position, moves);
 
 	for (int i = 0; i < moveCount; i++)
@@ -42,7 +44,7 @@ int qSearch(Position &position, int alpha, int beta, int depth)
 	{
 		for (int j = i + 1; j < moveCount; j++)
 		{
-
+			
 		}
 	}
 }

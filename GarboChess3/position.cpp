@@ -2,6 +2,7 @@
 #include "position.h"
 #include "movegen.h"
 #include "mersenne.h"
+#include "evaluation.h"
 
 static MTRand Random;
 static u64 GetRand64()
@@ -123,6 +124,9 @@ void Position::Initialize(const std::string &fen)
 
 	Hash = GetHash();
 	PawnHash = GetPawnHash();
+
+	PsqEvalOpening = GetPsqEval(0);
+	PsqEvalEndgame = GetPsqEval(1);
 }
 
 std::string Position::GetFen() const
@@ -185,51 +189,6 @@ std::string Position::GetFen() const
 	return result;
 }
 
-u64 Position::GetHash() const
-{
-	u64 result = 0;
-
-	for (PieceType piece = PAWN; piece <= KING; piece++)
-	{
-		Bitboard b = Pieces[piece];
-		while (b)
-		{
-			const Square square = PopFirstBit(b);
-			const Color color = IsBitSet(Colors[WHITE], square) ? WHITE : BLACK;
-			result ^= Position::Zobrist[color][piece][square];
-		}
-	}
-
-	result ^= Position::ZobristCastle[CastleFlags];
-
-	if (EnPassent != -1)
-	{
-		result ^= Position::ZobristEP[EnPassent];
-	}
-
-	if (ToMove == BLACK)
-	{
-		result ^= Position::ZobristToMove;
-	}
-
-	return result;
-}
-
-u64 Position::GetPawnHash() const
-{
-	u64 result = 0;
-
-	Bitboard b = Pieces[PAWN];
-	while (b)
-	{
-		const Square square = PopFirstBit(b);
-		const Color color = IsBitSet(Colors[WHITE], square) ? WHITE : BLACK;
-		result ^= Position::Zobrist[color][PAWN][square];
-	}
-
-	return result;
-}
-
 void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 {
 	const Color us = ToMove;
@@ -272,6 +231,10 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 		XorClearBit(Colors[them], to);
 
 		Hash ^= Position::Zobrist[them][target][to];
+
+		PsqEvalOpening -= PsqTable[Board[to]][to][0];
+		PsqEvalEndgame -= PsqTable[Board[to]][to][1];
+
 		if (target == PAWN)
 		{
 			PawnHash ^= Position::Zobrist[them][PAWN][to];
@@ -290,6 +253,9 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 
 	SetBit(Pieces[piece], to);
 	SetBit(Colors[us], to);
+
+	PsqEvalOpening += PsqTable[Board[from]][to][0] - PsqTable[Board[from]][from][0];
+	PsqEvalEndgame += PsqTable[Board[from]][to][1] - PsqTable[Board[from]][from][1];
 
 	Board[to] = Board[from];
 	Board[from] = PIECE_NONE;
@@ -323,7 +289,12 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 			XorClearBit(Pieces[PAWN], to);
 			SetBit(Pieces[promotionType], to);
 
-			Board[to] = MakePiece(us, promotionType);
+			const Piece promotedPiece = MakePiece(us, promotionType);
+
+			PsqEvalOpening += PsqTable[promotedPiece][to][0] - PsqTable[Board[to]][to][0];
+			PsqEvalEndgame += PsqTable[promotedPiece][to][1] - PsqTable[Board[to]][to][1];
+
+			Board[to] = promotedPiece;
 
 			PawnHash ^= Position::Zobrist[us][PAWN][from];
 			Hash ^= Position::Zobrist[us][PAWN][to] ^ Position::Zobrist[us][promotionType][to];
@@ -337,6 +308,10 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 
 			XorClearBit(Pieces[PAWN], epSquare);
 			XorClearBit(Colors[them], epSquare);
+
+			PsqEvalOpening -= PsqTable[Board[epSquare]][epSquare][0];
+			PsqEvalEndgame -= PsqTable[Board[epSquare]][epSquare][1];
+
 			Board[epSquare] = PIECE_NONE;
 
 			PawnHash ^= Position::Zobrist[us][PAWN][from] ^ Position::Zobrist[us][PAWN][to] ^ Position::Zobrist[them][PAWN][epSquare];
@@ -383,6 +358,9 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 				Board[rookFrom] = PIECE_NONE;
 
 				Hash ^= Position::Zobrist[us][ROOK][rookFrom] ^ Position::Zobrist[us][ROOK][rookTo];
+
+				PsqEvalOpening += PsqTable[Board[rookTo]][rookTo][0] - PsqTable[Board[rookTo]][rookFrom][0];
+				PsqEvalEndgame += PsqTable[Board[rookTo]][rookTo][1] - PsqTable[Board[rookTo]][rookFrom][1];
 			}
 		}
 	}
@@ -465,6 +443,9 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 
 			Board[rookFrom] = Board[rookTo];
 			Board[rookTo] = PIECE_NONE;
+
+			PsqEvalOpening += PsqTable[Board[rookFrom]][rookFrom][0] - PsqTable[Board[rookFrom]][rookTo][0];
+			PsqEvalEndgame += PsqTable[Board[rookFrom]][rookFrom][1] - PsqTable[Board[rookFrom]][rookTo][1];
 		}
 	}
 	else if (moveFlags == MoveTypePromotion)
@@ -474,7 +455,11 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 		XorClearBit(Pieces[promotionType], from);
 		SetBit(Pieces[PAWN], from);
 
-		Board[from] = MakePiece(us, PAWN);
+		const Piece unpromotedPawn = MakePiece(us, PAWN);
+		Board[from] = unpromotedPawn;
+
+		PsqEvalOpening += PsqTable[unpromotedPawn][to][0] - PsqTable[Board[to]][to][0];
+		PsqEvalEndgame += PsqTable[unpromotedPawn][to][1] - PsqTable[Board[to]][to][1];
 	}
 	else if (moveFlags == MoveTypeEnPassent)
 	{
@@ -483,6 +468,9 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 		SetBit(Pieces[PAWN], epSquare);
 		SetBit(Colors[them], epSquare);
 		Board[epSquare] = MakePiece(them, PAWN);
+
+		PsqEvalOpening += PsqTable[Board[epSquare]][epSquare][0];
+		PsqEvalEndgame += PsqTable[Board[epSquare]][epSquare][1];
 	}
 
 	if (moveUndo.Captured != PIECE_NONE)
@@ -492,11 +480,17 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 		SetBit(Colors[them], to);
 	
 		Board[to] = MakePiece(them, moveUndo.Captured);
+
+		PsqEvalOpening += PsqTable[Board[to]][to][0];
+		PsqEvalEndgame += PsqTable[Board[to]][to][1];
 	}
 	else
 	{
 		Board[to] = PIECE_NONE;
 	}
+
+	PsqEvalOpening += PsqTable[Board[from]][from][0] - PsqTable[Board[from]][to][0];
+	PsqEvalEndgame += PsqTable[Board[from]][from][1] - PsqTable[Board[from]][to][1];
 
 #if _DEBUG
 	VerifyBoard();
@@ -577,10 +571,70 @@ Bitboard Position::GetPinnedPieces(const Square square, const Color us) const
 	return pinned;
 }
 
+u64 Position::GetHash() const
+{
+	u64 result = 0;
+
+	for (PieceType piece = PAWN; piece <= KING; piece++)
+	{
+		Bitboard b = Pieces[piece];
+		while (b)
+		{
+			const Square square = PopFirstBit(b);
+			const Color color = IsBitSet(Colors[WHITE], square) ? WHITE : BLACK;
+			result ^= Position::Zobrist[color][piece][square];
+		}
+	}
+
+	result ^= Position::ZobristCastle[CastleFlags];
+
+	if (EnPassent != -1)
+	{
+		result ^= Position::ZobristEP[EnPassent];
+	}
+
+	if (ToMove == BLACK)
+	{
+		result ^= Position::ZobristToMove;
+	}
+
+	return result;
+}
+
+u64 Position::GetPawnHash() const
+{
+	u64 result = 0;
+
+	Bitboard b = Pieces[PAWN];
+	while (b)
+	{
+		const Square square = PopFirstBit(b);
+		const Color color = IsBitSet(Colors[WHITE], square) ? WHITE : BLACK;
+		result ^= Position::Zobrist[color][PAWN][square];
+	}
+
+	return result;
+}
+
+int Position::GetPsqEval(int gameStage) const
+{
+	int result = 0;
+	for (Square square = 0; square < 64; square++)
+	{
+		if (Board[square] != PIECE_NONE)
+		{
+			result += PsqTable[Board[square]][square][gameStage];
+		}
+	}
+
+	return result;
+}
+
 void Position::VerifyBoard() const
 {
 	const bool verifyBoard = true;
 	const bool verifyHash = true;
+	const bool verifyPsqEval = true;
 
 	if (verifyBoard)
 	{
@@ -611,5 +665,11 @@ void Position::VerifyBoard() const
 	{
 		ASSERT(Hash == GetHash());
 		ASSERT(PawnHash == GetPawnHash());
+	}
+
+	if (verifyPsqEval)
+	{
+		ASSERT(PsqEvalOpening == GetPsqEval(0));
+		ASSERT(PsqEvalEndgame == GetPsqEval(1));
 	}
 }

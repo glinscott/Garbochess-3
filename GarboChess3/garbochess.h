@@ -89,6 +89,11 @@ inline Square MakeSquare(const int row, const int column)
 	return (row << 3) | column;
 }
 
+inline Square FlipSquare(const Square square)
+{
+	return square ^ 070;
+}
+
 inline int GetRow(const Square square)
 {
 	ASSERT(IsSquareValid(square));

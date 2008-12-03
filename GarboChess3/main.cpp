@@ -1,6 +1,8 @@
 #include "garbochess.h"
 #include "position.h"
 #include "movegen.h"
+#include "evaluation.h"
+#include "search.h"
 
 #include <cstdio>
 
@@ -177,6 +179,7 @@ int main()
 {
 	InitializeBitboards();
 	Position::StaticInitialize();
+	InitializePsqTable();
 
 	UnitTests();
 

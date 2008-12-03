@@ -337,6 +337,10 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\evaluation.h"
+				>
+			</File>
+			<File
 				RelativePath=".\garbochess.h"
 				>
 			</File>
@@ -362,6 +366,10 @@
 			</File>
 			<File
 				RelativePath=".\position.h"
+				>
+			</File>
+			<File
+				RelativePath=".\psqTables.cpp"
 				>
 			</File>
 			<File

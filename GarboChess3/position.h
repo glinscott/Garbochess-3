@@ -19,6 +19,10 @@ public:
 	Bitboard Pieces[8];
 	Bitboard Colors[2];
 	Square KingPos[2];
+
+	int PsqEvalOpening;
+	int PsqEvalEndgame;
+
 	int CastleFlags;
 	int Fifty;
 	Color ToMove;
@@ -47,6 +51,7 @@ private:
 	void VerifyBoard() const;
 	u64 GetHash() const;
 	u64 GetPawnHash() const;
+	int GetPsqEval(int gameStage) const;
 
 	static int RookCastleFlagMask[64];
 	static u64 Zobrist[2][8][64];
