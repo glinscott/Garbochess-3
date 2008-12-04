@@ -185,6 +185,17 @@ inline int CountBitsSetMax15(Bitboard b)
 	return int(b >> 60);
 }
 
+inline int CountBitsSetFew(Bitboard b)
+{
+	int result = 0;
+	while (b)
+	{
+		b &= (b - 1);
+		result++;
+	}
+	return result;
+}
+
 // Move helpers
 inline Square GetFrom(const Move move)
 {

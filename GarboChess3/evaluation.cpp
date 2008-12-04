@@ -2,6 +2,7 @@
 #include "position.h"
 #include "evaluation.h"
 
+// Scaling for game phase (opening -> endgame transition)
 EVAL_FEATURE(KnightPhaseScale, 1);
 EVAL_FEATURE(BishopPhaseScale, 1);
 EVAL_FEATURE(RookPhaseScale, 2);
@@ -15,10 +16,10 @@ int Evaluate(const Position &position)
 	int endgame = position.PsqEvalEndgame;
 
 	// TODO: this should go away once we actually loop over the pieces
-	const int knightCount = CountBitsSetMax15(position.Pieces[KNIGHT]);
-	const int bishopCount = CountBitsSetMax15(position.Pieces[BISHOP]);
-	const int rookCount = CountBitsSetMax15(position.Pieces[ROOK]);
-	const int queenCount = CountBitsSetMax15(position.Pieces[QUEEN]);
+	const int knightCount = CountBitsSetFew(position.Pieces[KNIGHT]);
+	const int bishopCount = CountBitsSetFew(position.Pieces[BISHOP]);
+	const int rookCount = CountBitsSetFew(position.Pieces[ROOK]);
+	const int queenCount = CountBitsSetFew(position.Pieces[QUEEN]);
 	
 	EVAL_CONST int gamePhaseMax = (4 * KnightPhaseScale) + (4 * BishopPhaseScale) + (4 * RookPhaseScale) + (2 * QueenPhaseScale);
 
@@ -28,7 +29,7 @@ int Evaluate(const Position &position)
 		(bishopCount * BishopPhaseScale) +
 		(rookCount * RookPhaseScale) +
 		(queenCount * QueenPhaseScale);
-	
+
 	// Linear interpolation between opening and endgame
 	int result = ((opening * gamePhase) + (endgame * (gamePhaseMax - gamePhase))) / gamePhaseMax;
 
