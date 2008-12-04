@@ -8,6 +8,12 @@ EVAL_FEATURE(BishopPhaseScale, 1);
 EVAL_FEATURE(RookPhaseScale, 2);
 EVAL_FEATURE(QueenPhaseScale, 4);
 
+template<class T>
+const T& min(const T &a, const T &b) { return a < b ? a : b; }
+
+template<class T>
+const T& max(const T &a, const T &b) { return a > b ? a : b; }
+
 int Evaluate(const Position &position)
 {
 	// TODO: Lazy evaluation?
@@ -25,10 +31,11 @@ int Evaluate(const Position &position)
 
 	// Goes from gamePhaseMax at opening to 0 at endgame
 	int gamePhase = 
-		(knightCount * KnightPhaseScale) +
-		(bishopCount * BishopPhaseScale) +
-		(rookCount * RookPhaseScale) +
-		(queenCount * QueenPhaseScale);
+		max(gamePhaseMax,
+			(knightCount * KnightPhaseScale) +
+			(bishopCount * BishopPhaseScale) +
+			(rookCount * RookPhaseScale) +
+			(queenCount * QueenPhaseScale));
 
 	// Linear interpolation between opening and endgame
 	int result = ((opening * gamePhase) + (endgame * (gamePhaseMax - gamePhase))) / gamePhaseMax;
