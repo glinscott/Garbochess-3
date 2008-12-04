@@ -48,13 +48,13 @@ EVAL_FEATURE(KingRowEndgame, 0);
 const int EmptyFeature[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 const int PawnColumn[8] = { -3, -1, +0, +1, +1, +0, -1, -3 };
 const int KnightLine[8] = { -4, -2, +0, +1, +1, +0, -2, -4 };
-const int KnightRow[8] = { -2, -1, +0, +1, +2, +3, +2, +1 };
+const int KnightRow[8] = { +1, +2, +3, +2, +1, +0, -1, -2 };
 const int BishopLine[8] = { -3, -1, +0, +1, +1, +0, -1, -3 };
 const int RookColumn[8] = { -2, -1, +0, +1, +1, +0, -1, -2 };
 const int QueenLine[8] = { -3, -1, +0, +1, +1, +0, -1, -3 };
 const int KingLine[8] = { -3, -1, +0, +1, +1, +0, -1, -3 };
 const int KingColumn[8] = { +3, +4, +2, +0, +0, +2, +4, +3 };
-const int KingRow[8] = { +1, +0, -2, -3, -4, -5, -6, -7 };
+const int KingRow[8] = { -7, -6, -5, -4, -3, -2, +0, +1 };
 
 void InitPiece(Piece piece,
 			   int weightOpening, int weightEndgame,
@@ -156,10 +156,14 @@ void InitializePsqTable()
 		for (Square square = 0; square < 64; square++)
 		{
 			PsqTableOpening[MakePiece(WHITE, pieceType)][square] /= 10;
+			PsqTableEndgame[MakePiece(WHITE, pieceType)][square] /= 10;
+		}
+
+		for (Square square = 0; square < 64; square++)
+		{
 			PsqTableOpening[MakePiece(BLACK, pieceType)][FlipSquare(square)] = 
 				-PsqTableOpening[MakePiece(WHITE, pieceType)][square];
 
-			PsqTableEndgame[MakePiece(WHITE, pieceType)][square] /= 10;
 			PsqTableEndgame[MakePiece(BLACK, pieceType)][FlipSquare(square)] = 
 				-PsqTableEndgame[MakePiece(WHITE, pieceType)][square];
 		}

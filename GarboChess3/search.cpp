@@ -2,21 +2,19 @@
 #include "position.h"
 #include "movegen.h"
 #include "search.h"
+#include "evaluation.h"
 
-int evaluate(const Position &position)
+int See(Position &position, Move move)
 {
 	return 0;
 }
 
-int see(Position &position, Move move)
+int QSearch(Position &position, int alpha, int beta, int depth)
 {
-	return 0;
-}
+	// TODO: check for draws here?
 
-int qSearch(Position &position, int alpha, int beta, int depth)
-{
-	int eval = evaluate(position);
-	// What do we want from our evaluation?
+	// What do we want from our evaluation? - this needs to be decided (mobility/threat information?)
+	int eval = Evaluate(position);
 
 	if (eval > alpha)
 	{
