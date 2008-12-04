@@ -197,8 +197,11 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 	const Square from = GetFrom(move);
 	const Square to = GetTo(move);
 
-	const PieceType piece = GetPieceType(Board[from]);
-	const PieceType target = GetPieceType(Board[to]);
+	const Piece boardFrom = Board[from];
+	const Piece boardTo = Board[to];
+
+	const PieceType piece = GetPieceType(boardFrom);
+	const PieceType target = GetPieceType(boardTo);
 
 	ASSERT(GetPieceColor(Board[from]) == us);
 	ASSERT(GetPieceColor(Board[to]) == them || Board[to] == PIECE_NONE);
@@ -232,8 +235,8 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 
 		Hash ^= Position::Zobrist[them][target][to];
 
-		PsqEvalOpening -= PsqTable[Board[to]][to][0];
-		PsqEvalEndgame -= PsqTable[Board[to]][to][1];
+		PsqEvalOpening -= PsqTableOpening[boardTo][to];
+		PsqEvalEndgame -= PsqTableEndgame[boardTo][to];
 
 		if (target == PAWN)
 		{
@@ -254,8 +257,8 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 	SetBit(Pieces[piece], to);
 	SetBit(Colors[us], to);
 
-	PsqEvalOpening += PsqTable[Board[from]][to][0] - PsqTable[Board[from]][from][0];
-	PsqEvalEndgame += PsqTable[Board[from]][to][1] - PsqTable[Board[from]][from][1];
+	PsqEvalOpening += PsqTableOpening[boardFrom][to] - PsqTableOpening[boardFrom][from];
+	PsqEvalEndgame += PsqTableEndgame[boardFrom][to] - PsqTableEndgame[boardFrom][from];
 
 	Board[to] = Board[from];
 	Board[from] = PIECE_NONE;
@@ -291,8 +294,8 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 
 			const Piece promotedPiece = MakePiece(us, promotionType);
 
-			PsqEvalOpening += PsqTable[promotedPiece][to][0] - PsqTable[Board[to]][to][0];
-			PsqEvalEndgame += PsqTable[promotedPiece][to][1] - PsqTable[Board[to]][to][1];
+			PsqEvalOpening += PsqTableOpening[promotedPiece][to] - PsqTableOpening[Board[to]][to];
+			PsqEvalEndgame += PsqTableEndgame[promotedPiece][to] - PsqTableEndgame[Board[to]][to];
 
 			Board[to] = promotedPiece;
 
@@ -309,8 +312,8 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 			XorClearBit(Pieces[PAWN], epSquare);
 			XorClearBit(Colors[them], epSquare);
 
-			PsqEvalOpening -= PsqTable[Board[epSquare]][epSquare][0];
-			PsqEvalEndgame -= PsqTable[Board[epSquare]][epSquare][1];
+			PsqEvalOpening -= PsqTableOpening[Board[epSquare]][epSquare];
+			PsqEvalEndgame -= PsqTableEndgame[Board[epSquare]][epSquare];
 
 			Board[epSquare] = PIECE_NONE;
 
@@ -359,8 +362,8 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 
 				Hash ^= Position::Zobrist[us][ROOK][rookFrom] ^ Position::Zobrist[us][ROOK][rookTo];
 
-				PsqEvalOpening += PsqTable[Board[rookTo]][rookTo][0] - PsqTable[Board[rookTo]][rookFrom][0];
-				PsqEvalEndgame += PsqTable[Board[rookTo]][rookTo][1] - PsqTable[Board[rookTo]][rookFrom][1];
+				PsqEvalOpening += PsqTableOpening[Board[rookTo]][rookTo] - PsqTableOpening[Board[rookTo]][rookFrom];
+				PsqEvalEndgame += PsqTableEndgame[Board[rookTo]][rookTo] - PsqTableEndgame[Board[rookTo]][rookFrom];
 			}
 		}
 	}
@@ -444,8 +447,8 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 			Board[rookFrom] = Board[rookTo];
 			Board[rookTo] = PIECE_NONE;
 
-			PsqEvalOpening += PsqTable[Board[rookFrom]][rookFrom][0] - PsqTable[Board[rookFrom]][rookTo][0];
-			PsqEvalEndgame += PsqTable[Board[rookFrom]][rookFrom][1] - PsqTable[Board[rookFrom]][rookTo][1];
+			PsqEvalOpening += PsqTableOpening[Board[rookFrom]][rookFrom] - PsqTableOpening[Board[rookFrom]][rookTo];
+			PsqEvalEndgame += PsqTableEndgame[Board[rookFrom]][rookFrom] - PsqTableEndgame[Board[rookFrom]][rookTo];
 		}
 	}
 	else if (moveFlags == MoveTypePromotion)
@@ -458,8 +461,8 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 		const Piece unpromotedPawn = MakePiece(us, PAWN);
 		Board[from] = unpromotedPawn;
 
-		PsqEvalOpening += PsqTable[unpromotedPawn][to][0] - PsqTable[Board[to]][to][0];
-		PsqEvalEndgame += PsqTable[unpromotedPawn][to][1] - PsqTable[Board[to]][to][1];
+		PsqEvalOpening += PsqTableOpening[unpromotedPawn][to] - PsqTableOpening[Board[to]][to];
+		PsqEvalEndgame += PsqTableEndgame[unpromotedPawn][to] - PsqTableEndgame[Board[to]][to];
 	}
 	else if (moveFlags == MoveTypeEnPassent)
 	{
@@ -469,8 +472,8 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 		SetBit(Colors[them], epSquare);
 		Board[epSquare] = MakePiece(them, PAWN);
 
-		PsqEvalOpening += PsqTable[Board[epSquare]][epSquare][0];
-		PsqEvalEndgame += PsqTable[Board[epSquare]][epSquare][1];
+		PsqEvalOpening += PsqTableOpening[Board[epSquare]][epSquare];
+		PsqEvalEndgame += PsqTableEndgame[Board[epSquare]][epSquare];
 	}
 
 	if (moveUndo.Captured != PIECE_NONE)
@@ -478,19 +481,22 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 		// Restore the rest of the captured pieces state
 		SetBit(Pieces[moveUndo.Captured], to);
 		SetBit(Colors[them], to);
-	
-		Board[to] = MakePiece(them, moveUndo.Captured);
 
-		PsqEvalOpening += PsqTable[Board[to]][to][0];
-		PsqEvalEndgame += PsqTable[Board[to]][to][1];
+		const Piece restoredPiece = MakePiece(them, moveUndo.Captured);
+		Board[to] = restoredPiece;
+
+		PsqEvalOpening += PsqTableOpening[restoredPiece][to];
+		PsqEvalEndgame += PsqTableEndgame[restoredPiece][to];
 	}
 	else
 	{
 		Board[to] = PIECE_NONE;
 	}
 
-	PsqEvalOpening += PsqTable[Board[from]][from][0] - PsqTable[Board[from]][to][0];
-	PsqEvalEndgame += PsqTable[Board[from]][from][1] - PsqTable[Board[from]][to][1];
+	const Piece boardFrom = Board[from];
+
+	PsqEvalOpening += PsqTableOpening[boardFrom][from] - PsqTableOpening[boardFrom][to];
+	PsqEvalEndgame += PsqTableEndgame[boardFrom][from] - PsqTableEndgame[boardFrom][to];
 
 #if _DEBUG
 	VerifyBoard();
@@ -621,7 +627,7 @@ int Position::GetPsqEval(int gameStage) const
 	{
 		if (Board[square] != PIECE_NONE)
 		{
-			result += PsqTable[Board[square]][square][gameStage];
+			result += gameStage == 0 ? PsqTableOpening[Board[square]][square] : PsqTableEndgame[Board[square]][square];
 		}
 	}
 

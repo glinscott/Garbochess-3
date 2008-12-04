@@ -1,5 +1,6 @@
 #define EVAL_FEATURE(featureName, value) const int (featureName) = (value);
 
-extern int PsqTable[16][64][2];
+extern int PsqTableOpening[16][64];
+extern int PsqTableEndgame[16][64];
 
 void InitializePsqTable();

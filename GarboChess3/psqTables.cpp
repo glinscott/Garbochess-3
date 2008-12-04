@@ -2,7 +2,8 @@
 #include "position.h"
 #include "evaluation.h"
 
-int PsqTable[16][64][2];
+int PsqTableOpening[16][64];
+int PsqTableEndgame[16][64];
 
 // Material weights (in centipawns, which are directly used by the evaluation value)
 EVAL_FEATURE(PawnOpening,   85);
@@ -65,17 +66,17 @@ void InitPiece(Piece piece,
 
 	for (Square square = 0; square < 64; square++)
 	{
-		PsqTable[piece][square][0] = weightOpening * 10; // Will be divided by 10 at the end
+		PsqTableOpening[piece][square] = weightOpening * 10; // Will be divided by 10 at the end
 
-		PsqTable[piece][square][0] +=
+		PsqTableOpening[piece][square] +=
 			(row[GetRow(square)] * rowWeightOpening) +
 			(column[GetColumn(square)] * columnWeightOpening) +
 			(center[GetRow(square)] * centerWeightOpening) +
 			(center[GetColumn(square)] * centerWeightOpening);
 
-		PsqTable[piece][square][1] = weightEndgame * 10; // Will be divided by 10 at the end
+		PsqTableEndgame[piece][square] = weightEndgame * 10; // Will be divided by 10 at the end
 
-		PsqTable[piece][square][1] +=
+		PsqTableEndgame[piece][square] +=
 			(row[GetRow(square)] * rowWeightEndgame) +
 			(column[GetColumn(square)] * columnWeightEndgame) +
 			(center[GetRow(square)] * centerWeightEndgame) +
@@ -89,10 +90,8 @@ void InitializePsqTable()
 	{
 		for (Square square = 0; square < 64; square++)
 		{
-			for (int gameStage = 0; gameStage < 2; gameStage++)
-			{
-				PsqTable[piece][square][gameStage] = 0;
-			}
+			PsqTableOpening[piece][square] = 0;
+			PsqTableEndgame[piece][square] = 0;
 		}
 	}
 
@@ -112,7 +111,7 @@ void InitializePsqTable()
 	// Knight bank rank penalty
 	for (Square square = MakeSquare(RANK_1, FILE_A); square <= MakeSquare(RANK_1, FILE_H); square++)
 	{
-		PsqTable[MakePiece(WHITE, KNIGHT)][square][0] -= KnightBackRowOpeningPenalty;
+		PsqTableOpening[MakePiece(WHITE, KNIGHT)][square] -= KnightBackRowOpeningPenalty;
 	}
 
 	InitPiece(MakePiece(WHITE, BISHOP), 
@@ -124,7 +123,7 @@ void InitializePsqTable()
 	// Bishop bank rank penalty
 	for (Square square = MakeSquare(RANK_1, FILE_A); square <= MakeSquare(RANK_1, FILE_H); square++)
 	{
-		PsqTable[MakePiece(WHITE, BISHOP)][square][0] -= BishopBackRowOpeningPenalty;
+		PsqTableOpening[MakePiece(WHITE, BISHOP)][square] -= BishopBackRowOpeningPenalty;
 	}
 
 	InitPiece(MakePiece(WHITE, ROOK), 
@@ -142,7 +141,7 @@ void InitializePsqTable()
 	// Queen bank rank penalty
 	for (Square square = MakeSquare(RANK_1, FILE_A); square <= MakeSquare(RANK_1, FILE_H); square++)
 	{
-		PsqTable[MakePiece(WHITE, QUEEN)][square][0] -= QueenBackRowOpeningPenalty;
+		PsqTableOpening[MakePiece(WHITE, QUEEN)][square] -= QueenBackRowOpeningPenalty;
 	}
 
 	InitPiece(MakePiece(WHITE, KING), 
@@ -156,11 +155,13 @@ void InitializePsqTable()
 	{
 		for (Square square = 0; square < 64; square++)
 		{
-			for (int gameStage = 0; gameStage < 2; gameStage++)
-			{
-				PsqTable[MakePiece(WHITE, pieceType)][square][gameStage] /= 10;
-				PsqTable[MakePiece(BLACK, pieceType)][FlipSquare(square)][gameStage] = -PsqTable[MakePiece(WHITE, pieceType)][square][gameStage];
-			}
+			PsqTableOpening[MakePiece(WHITE, pieceType)][square] /= 10;
+			PsqTableOpening[MakePiece(BLACK, pieceType)][FlipSquare(square)] = 
+				-PsqTableOpening[MakePiece(WHITE, pieceType)][square];
+
+			PsqTableEndgame[MakePiece(WHITE, pieceType)][square] /= 10;
+			PsqTableEndgame[MakePiece(BLACK, pieceType)][FlipSquare(square)] = 
+				-PsqTableEndgame[MakePiece(WHITE, pieceType)][square];
 		}
 	}
 }
