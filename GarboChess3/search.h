@@ -1,5 +1,5 @@
 const int OnePly = 8;
 
-int See(Position &position,  Move move);
-int QSearch(Position &position, int alpha, int beta, int depth);
-int QSearchCheck(Position &position, int alpha, int beta, int depth);
+bool FastSee(const Position &position, const Move move);
+int QSearch(Position &position, int alpha, const int beta, const int depth);
+int QSearchCheck(Position &position, int alpha, const int beta, const int depth);

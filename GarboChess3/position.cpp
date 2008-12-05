@@ -220,7 +220,6 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 	}
 
 	const Move moveFlags = move & MoveTypeMask;
-	Fifty++;
 
 	if (target != PIECE_NONE)
 	{
@@ -248,6 +247,10 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 			CastleFlags &= RookCastleFlagMask[to];
 			Hash ^= Position::ZobristCastle[CastleFlags];
 		}
+	}
+	else
+	{
+		Fifty++;
 	}
 
 	// Remove the piece from where it was standing

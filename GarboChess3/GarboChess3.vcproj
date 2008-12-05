@@ -389,6 +389,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\tests.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\windows.cpp"
 				>
 			</File>
