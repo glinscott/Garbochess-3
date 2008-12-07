@@ -146,7 +146,7 @@ void InitializePsqTable()
 
 	InitPiece(MakePiece(WHITE, KING), 
 		0, 0,	// Kings are not worth anything materially
-		KingLine, KingCenterOpening, KingCenterEndgame, 
+		KingLine, KingCenterOpening, KingCenterEndgame,
 		KingRow, KingRowOpening, KingRowEndgame,
 		KingColumn, KingColumnOpening, KingColumnEndgame);
 

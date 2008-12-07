@@ -207,7 +207,6 @@ public:
 
 		for (int i = 0; i < moveCount; i++)
 		{
-			// Currently scoring moves using MVV/LVA scoring.  ie. PxQ goes first, BxQ next, ... , KxP last
 			const PieceType fromPiece = GetPieceType(position.Board[GetFrom(moves[i])]);
 			const PieceType toPiece = GetPieceType(position.Board[GetTo(moves[i])]);
 
@@ -217,8 +216,20 @@ public:
 
 	void GenerateCheckEscape(const Position &position)
 	{
-		moveCount = GenerateCheckEscapes(position, moves);
+		moveCount = GenerateCheckEscapeMoves(position, moves);
 		moves[moveCount] = 0;
+
+		for (int i = 0; i < moveCount; i++)
+		{
+			const PieceType fromPiece = GetPieceType(position.Board[GetFrom(moves[i])]);
+			const PieceType toPiece = GetPieceType(position.Board[GetTo(moves[i])]);
+
+			moveScores[i] = toPiece != PIECE_NONE ? 
+				// Sort captures first
+				ScoreCaptureMove(moves[i], fromPiece, toPiece) :
+				// Score non-captures as equal
+				0;
+		}
 	}
 
 	inline Move NextMove()
@@ -236,7 +247,7 @@ public:
 			}
 		}
 
-		ASSERT((at + 1 >= moveCount) || (moveScores[at] > moveScores[at + 1]));
+		ASSERT((at + 1 >= moveCount) || (moveScores[at] >= moveScores[at + 1]));
 
 		return moves[at++];
 	}
@@ -245,6 +256,7 @@ private:
 
 	int ScoreCaptureMove(const Move move, const PieceType fromPiece, const PieceType toPiece)
 	{
+		// Currently scoring moves using MVV/LVA scoring.  ie. PxQ goes first, BxQ next, ... , KxP last
 		const Move moveType = GetMoveType(move);
 		if (moveType == MoveTypeNone)
 		{
