@@ -142,7 +142,7 @@ u64 perft(Position &position, int depth)
 	if (!position.IsCheck())
 	{
 		int moveCount = GenerateQuietMoves(position, moves);
-		moveCount += GenerateCaptures(position, moves + moveCount);
+		moveCount += GenerateCaptureMoves(position, moves + moveCount);
 
 		for (int i = 0; i < moveCount; i++)
 		{
@@ -165,7 +165,7 @@ u64 perft(Position &position, int depth)
 
 			Move vMoves[256];
 			int vCount = GenerateQuietMoves(position, vMoves);
-			vCount += GenerateCaptures(position, vMoves + vCount);
+			vCount += GenerateCaptureMoves(position, vMoves + vCount);
 			for (int i = 0; i < vCount; i++)
 			{
 				MoveUndo moveUndo;

@@ -380,7 +380,7 @@ int GenerateQuietMoves(const Position &position, Move *moves)
 	return moveCount;
 }
 
-int GenerateCaptures(const Position &position, Move *moves)
+int GenerateCaptureMoves(const Position &position, Move *moves)
 {
 	const Color us = position.ToMove;
 	const Color them = FlipColor(us);

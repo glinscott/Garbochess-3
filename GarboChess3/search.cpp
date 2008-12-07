@@ -191,6 +191,101 @@ bool FastSee(const Position &position, const Move move)
 	}
 }
 
+template<int maxMoves>
+class MoveSorter
+{
+public:
+	inline int GetMoveCount() const
+	{
+		return moveCount;
+	}
+
+	void GenerateQCapture(const Position &position)
+	{
+		moveCount = GenerateCaptureMoves(position, moves);
+		moves[moveCount] = 0; // Sentinel move
+
+		for (int i = 0; i < moveCount; i++)
+		{
+			// Currently scoring moves using MVV/LVA scoring.  ie. PxQ goes first, BxQ next, ... , KxP last
+			const PieceType fromPiece = GetPieceType(position.Board[GetFrom(moves[i])]);
+			const PieceType toPiece = GetPieceType(position.Board[GetTo(moves[i])]);
+
+			moveScores[i] = ScoreCaptureMove(moves[i], fromPiece, toPiece);
+		}
+	}
+
+	void GenerateCheckEscape(const Position &position)
+	{
+		moveCount = GenerateCheckEscapes(position, moves);
+		moves[moveCount] = 0;
+	}
+
+	inline Move NextMove()
+	{
+		// We use a trick here instead of checking for at == moveCount.
+		// The move initialization code stores a sentinel move at the end of the movelist.
+		ASSERT(at <= moveCount);
+
+		for (int i = at + 1; i < moveCount; i++)
+		{
+			if (moveScores[i] > moveScores[at])
+			{
+				Swap(moveScores[at], moveScores[i]);
+				Swap(moves[at], moves[i]);
+			}
+		}
+
+		ASSERT((at + 1 >= moveCount) || (moveScores[at] > moveScores[at + 1]));
+
+		return moves[at++];
+	}
+
+private:
+
+	int ScoreCaptureMove(const Move move, const PieceType fromPiece, const PieceType toPiece)
+	{
+		const Move moveType = GetMoveType(move);
+		if (moveType == MoveTypeNone)
+		{
+			ASSERT(fromPiece != PIECE_NONE);
+			ASSERT(toPiece != PIECE_NONE);
+
+			return toPiece * 100 - fromPiece;
+		}
+		else
+		{
+			if (moveType == MoveTypeEnPassent)
+			{
+				// e.p. captures
+				return PAWN * 100 - PAWN;
+			}
+			else
+			{
+				// Queen promotions
+				ASSERT(moveType == MoveTypePromotion);
+				ASSERT(GetPromotionMoveType(move) == QUEEN);
+
+				if (toPiece == PIECE_NONE)
+				{
+					// Goes first
+					return QUEEN * 100;
+				}
+				else
+				{
+					return toPiece * 100 - QUEEN;
+				}
+			}
+		}
+	}
+
+	Move moves[maxMoves];
+	int moveScores[maxMoves];
+	int moveCount;
+	int at;
+};
+
+
 // depth == 0 is normally what is called for q-search.
 // Checks are searched when depth >= -(OnePly / 2).  Depth is decreased by 1 for checks
 int QSearch(Position &position, int alpha, const int beta, const int depth)
@@ -213,71 +308,20 @@ int QSearch(Position &position, int alpha, const int beta, const int depth)
 		// TODO: Don't even try captures that won't make it back up to alpha?
 	}
 	
-	Move moves[64];
-	int moveScore[64];
-	int moveCount = GenerateCaptures(position, moves);
+	MoveSorter<64> moves;
+	moves.GenerateQCapture(position);
 
-	for (int i = 0; i < moveCount; i++)
+	Move move;
+	while ((move = moves.NextMove()) != 0)
 	{
-		// Currently scoring moves using MVV/LVA scoring.  ie. PxQ goes first, BxQ next, ... , KxP last
-		const PieceType fromPiece = GetPieceType(position.Board[GetFrom(moves[i])]);
-		const PieceType toPiece = GetPieceType(position.Board[GetTo(moves[i])]);
-
-		const Move moveType = GetMoveType(moves[i]);
-		if (moveType == MoveTypeNone)
-		{
-			ASSERT(fromPiece != PIECE_NONE);
-			ASSERT(toPiece != PIECE_NONE);
-
-			moveScore[i] = toPiece * 100 - fromPiece;
-		}
-		else
-		{
-			if (moveType == MoveTypeEnPassent)
-			{
-				// e.p. captures
-				moveScore[i] = PAWN * 100 - PAWN;
-			}
-			else
-			{
-				// Queen promotions
-				ASSERT(moveType == MoveTypePromotion);
-				ASSERT(GetPromotionMoveType(moves[i]) == QUEEN);
-
-				if (toPiece == PIECE_NONE)
-				{
-					// Goes first
-					moveScore[i] = QUEEN * 100;
-				}
-				else
-				{
-					moveScore[i] = toPiece * 100 - QUEEN;
-				}
-			}
-		}
-	}
-
-	for (int i = 0; i < moveCount; i++)
-	{
-		for (int j = i + 1; j < moveCount; j++)
-		{
-			if (moveScore[j] > moveScore[i])
-			{
-				Swap(moveScore[i], moveScore[j]);
-				Swap(moves[i], moves[j]);
-			}
-		}
-
-		ASSERT((i + 1 == moveCount) || (moveScore[i] > moveScore[i + 1]));
-
-		if (!FastSee(position, moves[i]))
+		if (!FastSee(position, move))
 		{
 			// TODO: use SEE when depth >= 0? - tapered q-search ideas
 			continue;
 		}
 
 		MoveUndo moveUndo;
-		position.MakeMove(moves[i], moveUndo);
+		position.MakeMove(move, moveUndo);
 
 		if (!position.CanCaptureKing())
 		{
@@ -307,7 +351,7 @@ int QSearch(Position &position, int alpha, const int beta, const int depth)
 			}
 		}
 
-		position.UnmakeMove(moves[i], moveUndo);
+		position.UnmakeMove(move, moveUndo);
 	}
 
 	if (depth < -(OnePly / 2))
@@ -322,9 +366,52 @@ int QSearch(Position &position, int alpha, const int beta, const int depth)
 
 int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 {
-	ASSERT(false);
+	ASSERT(position.IsCheck());
 
-	return 0;
+	// TODO: check for draws here
+
+	MoveSorter<64> moves;
+	moves.GenerateCheckEscape(position);
+
+	// TODO: singular move extension?
+
+	int bestScore = MinEval;
+
+	Move move;
+	while ((move = moves.NextMove()) != 0)
+	{
+		MoveUndo moveUndo;
+		position.MakeMove(move, moveUndo);
+
+		ASSERT(!position.CanCaptureKing());
+
+		int value;
+		if (position.IsCheck())
+		{
+			value = -QSearchCheck(position, -beta, -alpha, depth - 1);
+		}
+		else
+		{
+			value = -QSearch(position, -beta, -alpha, depth - OnePly);
+		}
+
+		if (value > bestScore)
+		{
+			bestScore = value;
+			if (value > alpha)
+			{
+				alpha = value;
+				if (value > beta)
+				{
+					return value;
+				}
+			}
+		}
+
+		position.UnmakeMove(move, moveUndo);
+	}
+
+	return bestScore;
 }
 
 // TODO: investigate using root move sorting in PV nodes (need PV hash table)
