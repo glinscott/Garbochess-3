@@ -95,27 +95,3 @@ inline Move GenerateEnPassentMove(const Square from, const Square to)
 {
 	return GenerateMove(from, to) | MoveTypeEnPassent;
 }
-
-inline PieceType GetPromotionMoveType(const Move move)
-{
-	const int promotionMove = move & PromotionTypeMask;
-	if (promotionMove == PromotionTypeQueen)
-	{
-		return QUEEN;
-	}
-	else if (promotionMove == PromotionTypeKnight)
-	{
-		return KNIGHT;
-	}
-	else if (promotionMove == PromotionTypeRook)
-	{
-		return ROOK;
-	}
-	else if (promotionMove == PromotionTypeBishop)
-	{
-		return BISHOP;
-	}
-	// Whoops
-	ASSERT(false);
-	return PIECE_NONE;
-}

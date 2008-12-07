@@ -212,6 +212,35 @@ inline Square GetTo(const Move move)
 	return (move >> 6) & 0x3F;
 }
 
+inline Move GetMoveType(const Move move)
+{
+	return move & MoveTypeMask;
+}
+
+inline PieceType GetPromotionMoveType(const Move move)
+{
+	const int promotionMove = move & PromotionTypeMask;
+	if (promotionMove == PromotionTypeQueen)
+	{
+		return QUEEN;
+	}
+	else if (promotionMove == PromotionTypeKnight)
+	{
+		return KNIGHT;
+	}
+	else if (promotionMove == PromotionTypeRook)
+	{
+		return ROOK;
+	}
+	else if (promotionMove == PromotionTypeBishop)
+	{
+		return BISHOP;
+	}
+	// Whoops
+	ASSERT(false);
+	return PIECE_NONE;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Timer
 ////////////////////////////////////////////////////////////////////////////////////////////////////

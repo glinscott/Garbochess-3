@@ -36,8 +36,14 @@ bool FastSee(const Position &position, const Move move)
 		return true;
 	}
 
+	if (GetMoveType(move) == MoveTypeEnPassent)
+	{
+		// e.p. captures are always pxp which is winning or equal.
+		return true;
+	}
+
 	// We should only be making initially losing captures here
-	ASSERT(fromValue > pieceValues[PAWN]);
+	ASSERT(fromValue > pieceValues[PAWN] || GetMoveType(move) == MoveTypePromotion);
 
 	const Bitboard enemyPieces = position.Colors[them];
 
@@ -88,6 +94,15 @@ bool FastSee(const Position &position, const Move move)
 	// King attacks
 	attackingPieces |= GetKingAttacks(to) & position.Pieces[KING];
 
+	// Make sure our original attacking piece is not included in the set of attacking pieces
+	attackingPieces &= allPieces;
+
+	if (!attackingPieces)
+	{
+		// No pieces attacking us, we have won
+		return true;
+	}
+
 	// At this point, we have built a bitboard of all the pieces attacking the "to" square.  This includes
 	// potential x-ray attacks from removing the "from" square piece, which we used to do the capture.
 
@@ -103,7 +118,7 @@ bool FastSee(const Position &position, const Move move)
 		// Find the least valuable piece of the opponent that can attack the square
 		for (PieceType capturingPiece = KNIGHT; capturingPiece <= KING; capturingPiece++)
 		{
-			const Bitboard attacks = position.Board[capturingPiece] & attackingPieces & position.Colors[them];
+			const Bitboard attacks = position.Pieces[capturingPiece] & attackingPieces & position.Colors[them];
 			if (attacks)
 			{
 				// They can capture with a piece
@@ -132,8 +147,8 @@ bool FastSee(const Position &position, const Move move)
 
 		// Add any x-ray attackers
 		attackingPieces |= 
-			(GetBishopAttacks(to, allPieces) & (position.Pieces[BISHOP] | position.Pieces[QUEEN])) |
-			(GetRookAttacks(to, allPieces) & (position.Pieces[ROOK] | position.Pieces[QUEEN]));
+			((GetBishopAttacks(to, allPieces) & (position.Pieces[BISHOP] | position.Pieces[QUEEN])) |
+			(GetRookAttacks(to, allPieces) & (position.Pieces[ROOK] | position.Pieces[QUEEN]))) & allPieces;
 
 		// Our turn to capture
 		capturingPieceValue = -1;
@@ -141,7 +156,7 @@ bool FastSee(const Position &position, const Move move)
 		// Find the least valuable piece of the opponent that can attack the square
 		for (PieceType capturingPiece = KNIGHT; capturingPiece <= KING; capturingPiece++)
 		{
-			const Bitboard attacks = position.Board[capturingPiece] & attackingPieces & position.Colors[us];
+			const Bitboard attacks = position.Pieces[capturingPiece] & attackingPieces & position.Colors[us];
 			if (attacks)
 			{
 				// We can capture with a piece
@@ -170,8 +185,8 @@ bool FastSee(const Position &position, const Move move)
 
 		// Add any x-ray attackers
 		attackingPieces |= 
-			(GetBishopAttacks(to, allPieces) & (position.Pieces[BISHOP] | position.Pieces[QUEEN])) |
-			(GetRookAttacks(to, allPieces) & (position.Pieces[ROOK] | position.Pieces[QUEEN]));
+			((GetBishopAttacks(to, allPieces) & (position.Pieces[BISHOP] | position.Pieces[QUEEN])) |
+			(GetRookAttacks(to, allPieces) & (position.Pieces[ROOK] | position.Pieces[QUEEN]))) & allPieces;
 
 	}
 }
@@ -208,10 +223,38 @@ int QSearch(Position &position, int alpha, const int beta, const int depth)
 		const PieceType fromPiece = GetPieceType(position.Board[GetFrom(moves[i])]);
 		const PieceType toPiece = GetPieceType(position.Board[GetTo(moves[i])]);
 
-		ASSERT(fromPiece != PIECE_NONE);
-		ASSERT(toPiece != PIECE_NONE);
+		const Move moveType = GetMoveType(moves[i]);
+		if (moveType == MoveTypeNone)
+		{
+			ASSERT(fromPiece != PIECE_NONE);
+			ASSERT(toPiece != PIECE_NONE);
 
-		moveScore[i] = toPiece * 100 - fromPiece;
+			moveScore[i] = toPiece * 100 - fromPiece;
+		}
+		else
+		{
+			if (moveType == MoveTypeEnPassent)
+			{
+				// e.p. captures
+				moveScore[i] = PAWN * 100 - PAWN;
+			}
+			else
+			{
+				// Queen promotions
+				ASSERT(moveType == MoveTypePromotion);
+				ASSERT(GetPromotionMoveType(moves[i]) == QUEEN);
+
+				if (toPiece == PIECE_NONE)
+				{
+					// Goes first
+					moveScore[i] = QUEEN * 100;
+				}
+				else
+				{
+					moveScore[i] = toPiece * 100 - QUEEN;
+				}
+			}
+		}
 	}
 
 	for (int i = 0; i < moveCount; i++)

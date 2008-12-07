@@ -219,7 +219,7 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 		EnPassent = -1;
 	}
 
-	const Move moveFlags = move & MoveTypeMask;
+	const Move moveFlags = GetMoveType(move);
 
 	if (target != PIECE_NONE)
 	{
@@ -416,7 +416,7 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 
 	Board[from] = Board[to];
 
-	const Move moveFlags = move & MoveTypeMask;
+	const Move moveFlags = GetMoveType(move);
 	if (piece == KING)
 	{
 		KingPos[us] = from;

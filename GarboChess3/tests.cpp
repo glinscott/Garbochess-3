@@ -55,9 +55,81 @@ void UnitTests()
 	// TODO: unit test Position::GetAttacksTo and Position::GetPinnedPieces
 }
 
+Move MakeMoveFromUciString(const std::string &moveString)
+{
+	const Square from = MakeSquare(RANK_1 - (moveString[1] - '1'), moveString[0] - 'a');
+	const Square to = MakeSquare(RANK_1 - (moveString[3] - '1'), moveString[2] - 'a');
+
+	if (moveString.length() == 5)
+	{
+		int promotionType;
+		switch (tolower(moveString[4]))
+		{
+		case 'n': promotionType = PromotionTypeKnight; break;
+		case 'b': promotionType = PromotionTypeBishop; break;
+		case 'r': promotionType = PromotionTypeRook; break;
+		case 'q': promotionType = PromotionTypeQueen; break;
+		}
+		return GeneratePromotionMove(from, to, promotionType);
+	}
+
+	return GenerateMove(from, to);
+}
+
+void CheckSee(const std::string &fen, const std::string &move, bool expected)
+{
+	Position position;
+	
+	position.Initialize(fen);
+	Move captureMove = MakeMoveFromUciString(move);
+	ASSERT(FastSee(position, captureMove) == expected);
+
+	// TODO: implement position.Flip(), and verify that flipped move also gives correct SEE value
+}
+
 void SeeTests()
 {
-	// 
+	// Winning pawn capture on rook
+	CheckSee("2r3k1/2r4p/1PNqb1p1/3p1p2/4p3/2Q1P2P/5PP1/1R4K1 w - - 0 37", "b6c7", true);
+
+	// Winning rook/queen capture on pawn
+	CheckSee("2r3k1/2P4p/2Nqb1p1/3p1p2/4p3/2Q1P2P/5PP1/1R4K1 b - - 0 37", "c8c7", true);
+	CheckSee("2r3k1/2P4p/2Nqb1p1/3p1p2/4p3/2Q1P2P/5PP1/1R4K1 b - - 0 37", "d6c7", true);
+
+	// Winning rook/queen capture on knight
+	CheckSee("6k1/2r4p/2Nqb1p1/3p1p2/4p3/2Q1P2P/5PP1/1R4K1 b - - 0 38", "c7c6", true);
+	CheckSee("6k1/2r4p/2Nqb1p1/3p1p2/4p3/2Q1P2P/5PP1/1R4K1 b - - 0 38", "d6c6", true);
+
+	// Losing rook/queen capture on knight (revealed rook attack)
+	CheckSee("6k1/2r4p/2Nqb1p1/3p1p2/4p3/2Q1P2P/5PP1/2R3K1 b - - 0 38", "c7c6", false);
+	CheckSee("6k1/2r4p/2Nqb1p1/3p1p2/4p3/2Q1P2P/5PP1/2R3K1 b - - 0 38", "d6c6", false);
+
+	// Winning rook/queen capture on knight (revealed bishop attack)
+	CheckSee("4b1k1/2rq3p/2N3p1/3p1p2/4p3/2Q1P2P/5PP1/2R3K1 b - - 0 38", "c7c6", true);
+	CheckSee("4b1k1/2rq3p/2N3p1/3p1p2/4p3/2Q1P2P/5PP1/2R3K1 b - - 0 38", "d7c6", true);
+
+	// Winning pawn capture on pawn
+	CheckSee("2r3k1/2pq3p/3P2p1/b4p2/4p3/2R1P2P/5PP1/2R3K1 w - - 0 38", "d6c7", true);
+
+	// Losing rook capture on pawn
+	CheckSee("2r3k1/2pq3p/3P2p1/b4p2/4p3/2R1P2P/5PP1/2R3K1 w - - 0 38", "c3c7", false);
+
+	// Losing queen capture on rook
+	CheckSee("2r3k1/2p4p/3P2p1/q4p2/4p3/2R1P2P/5PP1/2R3K1 b - - 0 38", "a5c3", false);
+
+	// Losing rook capture on pawn
+	CheckSee("1br3k1/2p4p/3P2p1/q4p2/4p3/2R1P2P/5PP1/2R3K1 w - - 0 38", "c3c7", false);
+
+	// Winning Q promotion (non-capture)
+	CheckSee("4rrk1/2P4p/6p1/5p2/4p3/2R1P2P/5PP1/2R3K1 w - - 0 38", "c7c8q", true);
+
+	// Losing Q promotion (non-capture)
+	CheckSee("r3rrk1/2P4p/6p1/5p2/4p3/2R1P2P/5PP1/2R3K1 w - - 0 38", "c7c8q", false);
+}
+
+void MoveSortingTest()
+{
+	// TODO: test move sorting (might have to factor it a bit better)
 }
 
 u64 perft(Position &position, int depth)
@@ -183,6 +255,7 @@ void RunPerftSuite(int depthToVerify)
 void RunTests()
 {
 	UnitTests();
+	SeeTests();
 
 	Position position;
 	position.Initialize("r2k3r/p1ppqNb1/bn2pQp1/3P4/1p2P3/2N4p/PPPBBPPP/R3K2R b - - 0 0");
