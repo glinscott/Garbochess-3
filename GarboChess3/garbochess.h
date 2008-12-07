@@ -85,11 +85,15 @@ inline bool IsSquareValid(const Square square)
 
 inline Square MakeSquare(const int row, const int column)
 {
+	ASSERT(row >= 0 && row < 7);
+	ASSERT(column >= 0 && column < 7);
+
 	return (row << 3) | column;
 }
 
 inline Square FlipSquare(const Square square)
 {
+	Assert(IsSquareValid(square));
 	return square ^ 070;
 }
 

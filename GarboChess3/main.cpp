@@ -6,6 +6,10 @@
 
 void RunTests();
 
+void RunEngine()
+{
+}
+
 int main()
 {
 	InitializeBitboards();

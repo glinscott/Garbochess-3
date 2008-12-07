@@ -385,6 +385,12 @@ int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 	MoveSorter<64> moves;
 	moves.GenerateCheckEscape(position);
 
+	if (moves.GetMoveCount() == 0)
+	{
+		// Checkmate
+		return MinEval;
+	}
+
 	// TODO: singular move extension?
 
 	int bestScore = MinEval;
