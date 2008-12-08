@@ -72,36 +72,44 @@ std::string GetNiceString(Position &position, const Move move)
 		GenerateLegalMoves(position, legalMoves);
 
 		// Do we need to disambiguate?
-		int rowCount = 0, columnCount = 0;
+		bool dupe = false, rowDiff = true, columnDiff = true;
 		for (int i = 0; i < (int)legalMoves.size(); i++)
 		{
-			if (GetTo(legalMoves[i]) == to &&
+			if (GetFrom(legalMoves[i]) != from &&
+				GetTo(legalMoves[i]) == to &&
 				GetPieceType(position.Board[GetFrom(legalMoves[i])]) == fromPieceType)
 			{
+				dupe = true;
 				if (GetRow(GetFrom(legalMoves[i])) == GetRow(from))
 				{
-					rowCount++;
+					rowDiff = false;
 				}
 				if (GetColumn(GetFrom(legalMoves[i])) == GetColumn(from))
 				{
-					columnCount++;
+					columnDiff = false;
 				}
 			}
 		}
 
-		if (rowCount > 1 && columnCount > 1)
+		if (dupe)
 		{
-			result += GetSquareSAN(from);
+			if (rowDiff)
+			{
+				result += GetSquareSAN(from)[0];
+			}
+			else if (columnDiff)
+			{
+				result += GetSquareSAN(from)[1];
+			}
+			else
+			{
+				result += GetSquareSAN(from);
+			}
 		}
-		else if (rowCount > 1 || 
-				 // Bit of a hack, pawn captures need a row
-				 (fromPieceType == PAWN && position.Board[to] != PIECE_NONE))
+		else if (fromPieceType == PAWN && position.Board[to] != PIECE_NONE)
 		{
+			// Pawn captures need a row
 			result += GetSquareSAN(from)[0];
-		}
-		else if (columnCount > 1)
-		{
-			result += GetSquareSAN(from)[1];
 		}
 		
 		// Capture?
@@ -276,10 +284,11 @@ int main()
 
 	RunTests();
 
-	TestSuite();
+	//TestSuite();
 
 	Position position;
-	position.Initialize("7k/p7/1R5K/6r1/6p1/6P1/8/8 w - -");
+	// TODO: test this with q-search checks on.
+	//position.Initialize("7k/p7/1R5K/6r1/6p1/6P1/8/8 w - -");
 	Move bestMove;
 	int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, 1);
 	printf("%s,%d\n", GetNiceString(position, bestMove).c_str(),score);
