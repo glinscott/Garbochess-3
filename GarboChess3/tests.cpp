@@ -139,7 +139,7 @@ u64 perft(Position &position, int depth)
 	u64 result = 0;
 
 	Move moves[256];
-	if (!position.IsCheck())
+	if (!position.IsInCheck())
 	{
 		int moveCount = GenerateQuietMoves(position, moves);
 		moveCount += GenerateCaptureMoves(position, moves + moveCount);
@@ -261,5 +261,5 @@ void RunTests()
 	position.Initialize("r2k3r/p1ppqNb1/bn2pQp1/3P4/1p2P3/2N4p/PPPBBPPP/R3K2R b - - 0 0");
 	perft(position, 2);
 
-	RunPerftSuite(5);
+//	RunPerftSuite(5);
 }

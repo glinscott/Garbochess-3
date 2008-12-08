@@ -119,8 +119,15 @@ void Position::Initialize(const std::string &fen)
 	}
 	at++;
 
-	// Fifty move clock
-	Fifty = atoi(fen.c_str() + at);
+	if (at < (int)fen.size() && isdigit(fen[at]))
+	{
+		// Fifty move clock
+		Fifty = atoi(fen.c_str() + at);
+	}
+	else
+	{
+		Fifty = 0;
+	}
 
 	Hash = GetHash();
 	PawnHash = GetPawnHash();

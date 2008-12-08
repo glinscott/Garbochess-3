@@ -195,6 +195,11 @@ template<int maxMoves>
 class MoveSorter
 {
 public:
+	MoveSorter()
+	{
+		at = 0;
+	}
+
 	inline int GetMoveCount() const
 	{
 		return moveCount;
@@ -326,8 +331,12 @@ int QSearch(Position &position, int alpha, const int beta, const int depth)
 	Move move;
 	while ((move = moves.NextMove()) != 0)
 	{
+/*		std::string GetNiceString(Position &position, const Move move);
+		const std::string fooString = GetNiceString(position, move);*/
+
 		if (!FastSee(position, move))
 		{
+			// TODO: we are excluding losing checks here as well - is this safe?
 			// TODO: use SEE when depth >= 0? - tapered q-search ideas
 			continue;
 		}
@@ -340,7 +349,7 @@ int QSearch(Position &position, int alpha, const int beta, const int depth)
 			int value;
 
 			// Search this move
-			if (position.IsCheck())
+			if (position.IsInCheck())
 			{
 				value = -QSearchCheck(position, -beta, -alpha, depth - 1);
 			}
@@ -349,21 +358,25 @@ int QSearch(Position &position, int alpha, const int beta, const int depth)
 				value = -QSearch(position, -beta, -alpha, depth - OnePly);
 			}
 
+			position.UnmakeMove(move, moveUndo);
+
 			if (value > eval)
 			{
 				eval = value;
 				if (value > alpha)
 				{
 					alpha = value;
-					if (value > beta)
+					if (value >= beta)
 					{
 						return value;
 					}
 				}
 			}
 		}
-
-		position.UnmakeMove(move, moveUndo);
+		else
+		{
+			position.UnmakeMove(move, moveUndo);
+		}
 	}
 
 	if (depth < -(OnePly / 2))
@@ -378,7 +391,7 @@ int QSearch(Position &position, int alpha, const int beta, const int depth)
 
 int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 {
-	ASSERT(position.IsCheck());
+	ASSERT(position.IsInCheck());
 
 	// TODO: check for draws here
 
@@ -404,7 +417,7 @@ int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 		ASSERT(!position.CanCaptureKing());
 
 		int value;
-		if (position.IsCheck())
+		if (position.IsInCheck())
 		{
 			value = -QSearchCheck(position, -beta, -alpha, depth - 1);
 		}
@@ -413,20 +426,20 @@ int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 			value = -QSearch(position, -beta, -alpha, depth - OnePly);
 		}
 
+		position.UnmakeMove(move, moveUndo);
+
 		if (value > bestScore)
 		{
 			bestScore = value;
 			if (value > alpha)
 			{
 				alpha = value;
-				if (value > beta)
+				if (value >= beta)
 				{
 					return value;
 				}
 			}
 		}
-
-		position.UnmakeMove(move, moveUndo);
 	}
 
 	return bestScore;

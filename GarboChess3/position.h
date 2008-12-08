@@ -41,7 +41,7 @@ public:
 	inline bool IsSquareAttacked(const Square square, const Color them) const { return IsSquareAttacked(square, them, GetAllPieces()); }
 	bool IsSquareAttacked(const Square square, const Color them, const Bitboard allPieces) const;
 
-	inline bool IsCheck() const { return IsSquareAttacked(KingPos[ToMove], FlipColor(ToMove)); }
+	inline bool IsInCheck() const { return IsSquareAttacked(KingPos[ToMove], FlipColor(ToMove)); }
 	inline bool CanCaptureKing() const { return IsSquareAttacked(KingPos[FlipColor(ToMove)], ToMove); }
 
 	Bitboard GetAttacksTo(const Square square) const;

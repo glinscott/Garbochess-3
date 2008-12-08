@@ -40,5 +40,5 @@ int Evaluate(const Position &position)
 	// Linear interpolation between opening and endgame
 	int result = ((opening * gamePhase) + (endgame * (gamePhaseMax - gamePhase))) / gamePhaseMax;
 
-	return result;
+	return position.ToMove == WHITE ? result : -result;
 }
