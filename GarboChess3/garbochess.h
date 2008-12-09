@@ -1,3 +1,5 @@
+#pragma warning(disable:4530)
+
 #include <intrin.h>
 
 #if _DEBUG

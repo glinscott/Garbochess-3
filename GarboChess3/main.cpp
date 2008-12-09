@@ -35,7 +35,7 @@ std::string GetSquareSAN(const Square square)
 	return result;
 }
 
-std::string GetNiceString(Position &position, const Move move)
+std::string GetMoveSAN(Position &position, const Move move)
 {
 	const Square from = GetFrom(move);
 	const Square to = GetTo(move);
@@ -237,8 +237,8 @@ void TestSuite()
 
 				std::vector<std::string> moves = tokenize(fen, " ;");
 				Move bestMove;
-				int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, 3);
-				std::string bestMoveString = GetNiceString(position, bestMove);
+				int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, 2);
+				std::string bestMoveString = GetMoveSAN(position, bestMove);
 
 				bool match = false;
 				for (int j = 0; j < (int)moves.size(); j++)
@@ -286,7 +286,7 @@ int main()
 
 	RunTests();
 
-	TestSuite();
+//	TestSuite();
 
 /*	Position position;
 	// TODO: test this with q-search checks on.

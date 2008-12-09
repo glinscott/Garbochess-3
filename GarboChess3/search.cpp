@@ -205,7 +205,7 @@ public:
 		return moveCount;
 	}
 
-	void GenerateQCapture(const Position &position)
+	inline void GenerateQCapture(const Position &position)
 	{
 		moveCount = GenerateCaptureMoves(position, moves);
 		moves[moveCount] = 0; // Sentinel move
@@ -219,7 +219,7 @@ public:
 		}
 	}
 
-	void GenerateCheckEscape(const Position &position)
+	inline void GenerateCheckEscape(const Position &position)
 	{
 		moveCount = GenerateCheckEscapeMoves(position, moves);
 		moves[moveCount] = 0;

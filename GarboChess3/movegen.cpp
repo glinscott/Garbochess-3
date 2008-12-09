@@ -207,9 +207,13 @@ void InitializeBitboards()
 			{
 				SquaresBetween[from][to] = GetRookAttacks(from, usThem) & GetRookAttacks(to, usThem);
 			}
-			else
+			else if (abs(GetRow(from) - GetRow(to)) == abs(GetColumn(from) - GetColumn(to)))
 			{
 				SquaresBetween[from][to] = GetBishopAttacks(from, usThem) & GetBishopAttacks(to, usThem);
+			}
+			else
+			{
+				SquaresBetween[from][to] = 0;
 			}
 		}
 	}
@@ -319,7 +323,7 @@ int GenerateQuietMoves(const Position &position, Move *moves)
 	const Color us = position.ToMove;
 	const Color them = FlipColor(position.ToMove);
 	const Bitboard ourPieces = position.Colors[us];
-	const Bitboard allPieces = position.Colors[0] | position.Colors[1];
+	const Bitboard allPieces = position.GetAllPieces();
 	const Bitboard targets = ~allPieces;
 	
 	int moveCount = 0;
@@ -385,7 +389,7 @@ int GenerateCaptureMoves(const Position &position, Move *moves)
 	const Color us = position.ToMove;
 	const Color them = FlipColor(us);
 	const Bitboard ourPieces = position.Colors[us];
-	const Bitboard allPieces = position.Colors[0] | position.Colors[1];
+	const Bitboard allPieces = position.GetAllPieces();
 	const Bitboard targets = position.Colors[them];
 	
 	int moveCount = 0;
@@ -424,6 +428,144 @@ int GenerateCaptureMoves(const Position &position, Move *moves)
 int GenerateCheckingMoves(const Position &position, Move *moves)
 {
 	int moveCount = 0;
+
+	const Color us = position.ToMove;
+	const Color them = FlipColor(us);
+	const Square kingSquare = position.KingPos[them];
+
+	const Bitboard ourPieces = position.Colors[us];
+	const Bitboard allPieces = position.GetAllPieces();
+	const Bitboard emptySquares = ~allPieces;
+
+	// Direct pawn checks
+	Bitboard targets = GetPawnAttacks(kingSquare, them) & emptySquares;
+	while (targets)
+	{
+		const Square to = PopFirstBit(targets);
+		const Bitboard potentialPawns = GetPawnMoves(to, them);
+		if (potentialPawns & emptySquares)
+		{
+			if (GetRow(to) == RANK_4 && us == WHITE)
+			{
+				const Square from = MakeSquare(RANK_2, GetColumn(to));
+				if (IsBitSet(ourPieces & position.Pieces[PAWN], from))
+				{
+					moves[moveCount++] = GenerateMove(from, to);
+				}
+			}
+			else if (GetRow(to) == RANK_5 && us == BLACK)
+			{
+				const Square from = MakeSquare(RANK_2, GetColumn(to));
+				if (IsBitSet(ourPieces & position.Pieces[PAWN], from))
+				{
+					moves[moveCount++] = GenerateMove(from, to);
+				}
+			}
+		}
+
+		// Single pawn push
+		if (potentialPawns & position.Pieces[PAWN] & ourPieces)
+		{
+			moves[moveCount++] = GenerateMove(GetFirstBitIndex(potentialPawns), to);
+		}
+	}
+
+	// Direct knight checks
+	Bitboard b;
+	targets = GetKnightAttacks(kingSquare) & emptySquares;
+	MoveGenerationLoop(GetKnightAttacks(from), position.Pieces[KNIGHT]);
+
+	// Do combined direct/revealed bishop/rook/queen checks
+	const Bitboard bishopCheckingLines = GetBishopAttacks(kingSquare, allPieces);
+	const Bitboard rookCheckingLines = GetRookAttacks(kingSquare, allPieces);
+	b = (position.Pieces[BISHOP] | position.Pieces[ROOK] | position.Pieces[QUEEN]) & ourPieces;
+	while (b)
+	{
+		const Square from = PopFirstBit(b);
+
+		Bitboard attacks;
+		const PieceType ourPiece = GetPieceType(position.Board[from]);
+		if (ourPiece == QUEEN)
+		{
+			attacks = (GetBishopAttacks(from, allPieces) | GetRookAttacks(from, allPieces)) & (bishopCheckingLines | rookCheckingLines);
+		}
+		else if (ourPiece == ROOK)
+		{
+			attacks = GetRookAttacks(from, allPieces) & rookCheckingLines;
+		}
+		else
+		{
+			attacks = GetBishopAttacks(from, allPieces) & bishopCheckingLines;
+		}
+
+		while (attacks)
+		{
+			const Square to = PopFirstBit(attacks);
+			const PieceType at = GetPieceType(position.Board[to]);
+			if (at == PIECE_NONE)
+			{
+				// A direct check
+				moves[moveCount++] = GenerateMove(from, to);
+			}
+			else if (GetPieceColor(position.Board[to]) == us &&
+				IsBitSet(GetSquaresBetween(from, kingSquare), to))
+			{
+				// Revealed checks (it is not possible for us to move a queen to reveal check here, as they
+				// would already be giving check.  bishops/rooks are the same when a bishop/rook is moving)
+				Bitboard revealedMoves;
+				switch (at)
+				{
+				case PAWN:
+					{
+						const int row = GetRow(to);
+						if ((row == RANK_7 && us == WHITE) || (row == RANK_2 && us == BLACK))
+						{
+							// Don't generate promotion moves
+							revealedMoves = 0;
+							break;
+						}
+						revealedMoves = GetPawnMoves(to, us) & emptySquares;
+						if (revealedMoves && row == RANK_2 || row == RANK_7)
+						{
+							// Double pawn push
+							revealedMoves |= GetPawnMoves(MakeSquare(row == RANK_2 ? RANK_4 : RANK_5, GetColumn(to)), us) & emptySquares;
+						}
+
+						// Pawn captures
+						revealedMoves |= GetPawnAttacks(to, us) & emptySquares;
+
+						revealedMoves &= ~GetSquaresBetween(from, kingSquare);
+					}
+					break;
+				case KNIGHT:
+					revealedMoves = GetKnightAttacks(to) & emptySquares;
+					break;
+				case BISHOP:
+					if (ourPiece == ROOK)
+					{
+						revealedMoves = GetBishopAttacks(to, allPieces) & emptySquares;
+					}
+					break;
+				case ROOK:
+					if (ourPiece == BISHOP)
+					{
+						revealedMoves = GetRookAttacks(to, allPieces) & emptySquares;
+					}
+					break;
+				case KING:
+					revealedMoves = GetKingAttacks(to) & emptySquares & ~GetSquaresBetween(from, kingSquare);
+					break;
+				}
+
+				while (revealedMoves)
+				{
+					Square revealedTo = PopFirstBit(revealedMoves);
+					moves[moveCount++] = GenerateMove(to, revealedTo);
+				}
+			}
+		}
+	}
+
 	return moveCount;
 }
 
@@ -503,7 +645,7 @@ int GenerateCheckEscapeMoves(const Position &position, Move *moves)
 				if (pawnMoves)
 				{
 					const int row = GetRow(from);
-					// Double moves
+ 					// Double moves
 					if (us == WHITE && row == RANK_2)
 					{
 						SetBit(pawnMoves, MakeSquare(RANK_4, GetColumn(from)));
@@ -513,6 +655,7 @@ int GenerateCheckEscapeMoves(const Position &position, Move *moves)
 						SetBit(pawnMoves, MakeSquare(RANK_5, GetColumn(from)));
 					}
 
+					// We need to land on an in-between square, and it has to be empty.
 					pawnMoves &= squaresBetween & ~allPieces;
 
 					while (pawnMoves)

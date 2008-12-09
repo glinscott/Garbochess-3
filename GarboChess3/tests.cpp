@@ -5,6 +5,9 @@
 #include "search.h"
 
 #include <cstdio>
+#include <vector>
+
+void GenerateLegalMoves(Position &position, std::vector<Move> &legalMoves);
 
 void PrintBitboard(const Bitboard b)
 {
@@ -134,6 +137,57 @@ void MoveSortingTest()
 
 u64 perft(Position &position, int depth)
 {
+	const bool verifyCheckingMoves = false;
+
+	if (verifyCheckingMoves)
+	{
+		std::vector<Move> moves;
+		GenerateLegalMoves(position, moves);
+
+		Move checkingMoves[64];
+		int checkingMovesCount = GenerateCheckingMoves(position, checkingMoves);
+
+		for (int i = 0; i < (int)moves.size(); i++)
+		{
+			bool exists = false;
+			for (int j = 0; j < checkingMovesCount; j++)
+			{
+				if (checkingMoves[j] == moves[i])
+				{
+					exists = true;
+					break;
+				}
+			}
+
+			MoveUndo moveUndo;
+			position.MakeMove(moves[i], moveUndo);
+
+			bool isCheck = position.IsInCheck();
+			position.UnmakeMove(moves[i], moveUndo);
+
+			if (position.Board[GetTo(moves[i])] == PIECE_NONE &&
+				GetMoveType(moves[i]) == MoveTypeNone)
+			{
+				if (isCheck && !exists)
+				{
+					std::string fen = position.GetFen();
+					const std::string moveString = GetMoveSAN(position, moves[i]);
+					ASSERT(false);
+					int checkingMovesCount = GenerateCheckingMoves(position, checkingMoves);
+				}
+				else if (!isCheck && exists)
+				{
+					std::string fen = position.GetFen();
+					const std::string moveString = GetMoveSAN(position, moves[i]);
+					ASSERT(false);
+					int checkingMovesCount = GenerateCheckingMoves(position, checkingMoves);
+				}
+			}
+		}
+
+		//TODO: Test pseudo legality of checking moves
+	}
+
 	if (depth == 0) return 1;
 
 	u64 result = 0;
@@ -257,9 +311,9 @@ void RunTests()
 	UnitTests();
 	SeeTests();
 
-	Position position;
+/*	Position position;
 	position.Initialize("r2k3r/p1ppqNb1/bn2pQp1/3P4/1p2P3/2N4p/PPPBBPPP/R3K2R b - - 0 0");
-	perft(position, 2);
+	perft(position, 2);*/
 
-//	RunPerftSuite(5);
+	RunPerftSuite(4);
 }

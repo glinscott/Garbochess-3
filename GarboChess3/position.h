@@ -59,3 +59,5 @@ private:
 	static u64 ZobristCastle[16];
 	static u64 ZobristToMove;
 };
+
+std::string GetMoveSAN(Position &position, const Move move);
