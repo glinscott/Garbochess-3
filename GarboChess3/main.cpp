@@ -113,7 +113,8 @@ std::string GetNiceString(Position &position, const Move move)
 		}
 		
 		// Capture?
-		if (position.Board[to] != PIECE_NONE)
+		if (position.Board[to] != PIECE_NONE ||
+			moveType == MoveTypeEnPassent)
 		{
 			result += "x";
 		}
@@ -152,6 +153,7 @@ int SuperBasicQsearchTest(Position &position, int alpha, int beta, Move &bestMov
 	std::vector<Move> moves;
 	GenerateLegalMoves(position, moves);
 
+	bestMove = 0;
 	int bestScore = MinEval;
 	for (int i = 0; i < (int)moves.size(); i++)
 	{
@@ -178,10 +180,10 @@ int SuperBasicQsearchTest(Position &position, int alpha, int beta, Move &bestMov
 		}
 		position.UnmakeMove(moves[i], moveUndo);
 
-//		if (depth == 1)
+//		if (depth == 3)
 //		std::printf("Searched %d.%s - > %d\n", i, fooString.c_str(), score);
 
-		if (score >= bestScore)
+		if (score > bestScore || bestMove == 0)
 		{
 			bestMove = moves[i];
 			bestScore = score;
@@ -235,7 +237,7 @@ void TestSuite()
 
 				std::vector<std::string> moves = tokenize(fen, " ;");
 				Move bestMove;
-				int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, 2);
+				int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, 3);
 				std::string bestMoveString = GetNiceString(position, bestMove);
 
 				bool match = false;
@@ -250,7 +252,7 @@ void TestSuite()
 				
 				if (!match)
 				{
-					std::printf("%s -> expected %s\n", bestMoveString.c_str(), moves[0].c_str());
+					std::printf("%d. %s -> expected %s\n", test, bestMoveString.c_str(), moves[0].c_str());
 				}
 				else
 				{
@@ -284,14 +286,14 @@ int main()
 
 	RunTests();
 
-	//TestSuite();
+	TestSuite();
 
-	Position position;
+/*	Position position;
 	// TODO: test this with q-search checks on.
 	//position.Initialize("7k/p7/1R5K/6r1/6p1/6P1/8/8 w - -");
 	Move bestMove;
-	int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, 1);
-	printf("%s,%d\n", GetNiceString(position, bestMove).c_str(),score);
+	int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, 3);
+	printf("%s,%d\n", GetNiceString(position, bestMove).c_str(),score);*/
 
 	return 0;
 }
