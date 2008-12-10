@@ -805,23 +805,15 @@ bool IsMovePseudoLegal(const Position &position, const Move move)
 			// Castling is a bit tricky, as we don't do any MakeMove validation of castling moves
 			const int castleFlags = us == WHITE ? position.CastleFlags : position.CastleFlags >> 2;
 
-			if (castleFlags & CastleFlagWhiteKing)
+			if (GetColumn(to) == FILE_G &&
+				castleFlags & CastleFlagWhiteKing)
 			{
-				if (!IsKingsideCastleLegal(position, position.GetAllPieces(), us, them) ||
-					GetColumn(to) != FILE_G)
-				{
-					return false;
-				}
-				return true;
+				return IsKingsideCastleLegal(position, position.GetAllPieces(), us, them);
 			}
-			if (castleFlags & CastleFlagWhiteQueen)
+			if (GetColumn(to) == FILE_C &&
+				castleFlags & CastleFlagWhiteQueen)
 			{
-				if (!IsQueensideCastleLegal(position, position.GetAllPieces(), us, them) ||
-					GetColumn(to) != FILE_C)
-				{
-					return false;
-				}
-				return true;
+				return IsQueensideCastleLegal(position, position.GetAllPieces(), us, them);
 			}
 		}
 	}

@@ -156,7 +156,7 @@ void MoveSortingTest()
 
 u64 perft(Position &position, int depth)
 {
-	const bool verifyCheckingMoves = true;
+	const bool verifyCheckingMoves = false;
 
 	if (verifyCheckingMoves)
 	{

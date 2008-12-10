@@ -198,6 +198,8 @@ std::string Position::GetFen() const
 
 void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 {
+	ASSERT(IsMovePseudoLegal((const Position&)*this, move));
+
 	const Color us = ToMove;
 	const Color them = FlipColor(us);
 
