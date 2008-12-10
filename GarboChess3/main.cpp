@@ -297,9 +297,9 @@ int main()
 	TestSuite(2);
 
 	Position position;
-	position.Initialize("3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - -");
+	position.Initialize("r1b2rk1/ppbn1ppp/4p3/1QP4q/3P4/N4N2/5PPP/R1B2RK1 w - - 0 1");
 	Move bestMove;
-	int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, 0);
+	int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, 2);
 	printf("%s,%d\n", GetMoveSAN(position, bestMove).c_str(),score);
 
 	return 0;
