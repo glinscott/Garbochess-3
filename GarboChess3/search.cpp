@@ -295,18 +295,18 @@ private:
 			}
 			else
 			{
-				// Queen promotions
+				// Promotions
 				ASSERT(moveType == MoveTypePromotion);
-				ASSERT(GetPromotionMoveType(move) == QUEEN);
 
-				if (toPiece == PIECE_NONE)
+				if (GetPromotionMoveType(move) == QUEEN)
 				{
 					// Goes first
 					return QUEEN * 100;
 				}
 				else
 				{
-					return toPiece * 100 - QUEEN;
+					// Other types of promotions, we don't really care about
+					return 0;
 				}
 			}
 		}

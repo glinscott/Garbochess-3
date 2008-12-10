@@ -165,7 +165,7 @@ int SuperBasicQsearchTest(Position &position, int alpha, int beta, Move &bestMov
 	int bestScore = MinEval;
 	for (int i = 0; i < (int)moves.size(); i++)
 	{
-		const std::string fooString = GetMoveSAN(position, moves[i]);
+//		const std::string fooString = GetMoveSAN(position, moves[i]);
 		MoveUndo moveUndo;
 		position.MakeMove(moves[i], moveUndo);
 
@@ -188,8 +188,8 @@ int SuperBasicQsearchTest(Position &position, int alpha, int beta, Move &bestMov
 		}
 		position.UnmakeMove(moves[i], moveUndo);
 
-		if (depth == 3)
-		std::printf("Searched %d.%s - > %d\n", i, fooString.c_str(), score);
+/*		if (depth == 3)
+		std::printf("Searched %d.%s - > %d\n", i, fooString.c_str(), score);*/
 
 		if (score > bestScore || bestMove == 0)
 		{
@@ -294,12 +294,12 @@ int main()
 
 //	RunTests();
 
-//	TestSuite(2);
+	TestSuite(2);
 
 	Position position;
 	position.Initialize("3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - -");
 	Move bestMove;
-	int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, 3);
+	int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, 0);
 	printf("%s,%d\n", GetMoveSAN(position, bestMove).c_str(),score);
 
 	return 0;
