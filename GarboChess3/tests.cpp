@@ -85,6 +85,7 @@ void CheckSee(const std::string &fen, const std::string &move, bool expected)
 	
 	position.Initialize(fen);
 	Move captureMove = MakeMoveFromUciString(move);
+	ASSERT(IsMovePseudoLegal(position, captureMove));
 	ASSERT(FastSee(position, captureMove) == expected);
 
 	// TODO: implement position.Flip(), and verify that flipped move also gives correct SEE value
@@ -128,6 +129,24 @@ void SeeTests()
 
 	// Losing Q promotion (non-capture)
 	CheckSee("r3rrk1/2P4p/6p1/5p2/4p3/2R1P2P/5PP1/2R3K1 w - - 0 38", "c7c8q", false);
+
+	// Knight capturing pawn defended by pawn
+	CheckSee("K7/8/2p5/3p4/8/4N3/8/7k w - - 0 1", "e3d5", false);
+
+	// Knight capturing undefended pawn
+	CheckSee("K7/8/8/3p4/8/4N3/8/7k w - - 0 1", "e3d5", true);
+
+	// Rook capturing pawn defended by knight
+	CheckSee("K7/4n3/8/3p4/8/3R4/3R4/7k w - - 0 1", "d3d5", false);
+
+	// Rook capturing pawn defended by bishop
+	CheckSee("K7/5b2/8/3p4/8/3R4/3R4/7k w - - 0 1", "d3d5", false);
+
+	// Rook capturing knight defended by bishop
+	CheckSee("K7/5b2/8/3n4/8/3R4/3R4/7k w - - 0 1", "d3d5", true);
+
+	// Rook capturing rook defended by bishop
+	CheckSee("K7/5b2/8/3r4/8/3R4/3R4/7k w - - 0 1", "d3d5", true);
 }
 
 void MoveSortingTest()
@@ -137,7 +156,7 @@ void MoveSortingTest()
 
 u64 perft(Position &position, int depth)
 {
-	const bool verifyCheckingMoves = false;
+	const bool verifyCheckingMoves = true;
 
 	if (verifyCheckingMoves)
 	{
@@ -185,7 +204,11 @@ u64 perft(Position &position, int depth)
 			}
 		}
 
-		//TODO: Test pseudo legality of checking moves
+		// Test pseudo-legality of checking moves
+		for (int i = 0; i < checkingMovesCount; i++)
+		{
+			ASSERT(IsMovePseudoLegal(position, checkingMoves[i]));
+		}
 	}
 
 	if (depth == 0) return 1;
@@ -312,8 +335,8 @@ void RunTests()
 	SeeTests();
 
 /*	Position position;
-	position.Initialize("r2k3r/p1ppqNb1/bn2pQp1/3P4/1p2P3/2N4p/PPPBBPPP/R3K2R b - - 0 0");
-	perft(position, 2);*/
+	position.Initialize("8/Pk6/8/8/8/8/6Kp/8 w - -");
+	perft(position, 3);*/
 
-	RunPerftSuite(4);
+	RunPerftSuite(3);
 }

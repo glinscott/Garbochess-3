@@ -12,8 +12,16 @@ void RunTests();
 void GenerateLegalMoves(Position &position, std::vector<Move> &legalMoves)
 {
 	Move moves[256];
-	int moveCount = GenerateQuietMoves(position, moves);
-	moveCount += GenerateCaptureMoves(position, moves + moveCount);
+	int moveCount;
+	if (position.IsInCheck())
+	{
+		moveCount = GenerateCheckEscapeMoves(position, moves);
+	}
+	else
+	{
+		moveCount = GenerateQuietMoves(position, moves);
+		moveCount += GenerateCaptureMoves(position, moves + moveCount);
+	}
 
 	for (int i = 0; i < moveCount; i++)
 	{

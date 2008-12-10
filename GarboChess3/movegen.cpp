@@ -318,6 +318,33 @@ void GeneratePawnCaptures(Bitboard b, Move *moves, int &moveCount, const Color u
 		}															\
 	}
 
+inline bool IsKingsideCastleLegal(const Position &position, const Bitboard allPieces, const Color us, const Color them)
+{
+	const int kingRow = GetRow(position.KingPos[us]);
+	if (!IsBitSet(allPieces, MakeSquare(kingRow, FILE_F)) &&
+		!IsBitSet(allPieces, MakeSquare(kingRow, FILE_G)))
+	{
+		// Verify that the king is not moving through check
+		ASSERT(!position.IsInCheck());
+		return !position.IsSquareAttacked(MakeSquare(kingRow, FILE_F), them);
+	}
+	return false;
+}
+
+inline bool IsQueensideCastleLegal(const Position &position, const Bitboard allPieces, const Color us, const Color them)
+{
+	const int kingRow = GetRow(position.KingPos[us]);
+	if (!IsBitSet(allPieces, MakeSquare(kingRow, FILE_B)) &&
+		!IsBitSet(allPieces, MakeSquare(kingRow, FILE_C)) &&
+		!IsBitSet(allPieces, MakeSquare(kingRow, FILE_D)))
+	{
+		// Verify that the king is not moving through check
+		ASSERT(!position.IsInCheck());
+		return !position.IsSquareAttacked(MakeSquare(kingRow, FILE_D), them);
+	}
+	return false;
+}
+
 int GenerateQuietMoves(const Position &position, Move *moves)
 {
 	const Color us = position.ToMove;
@@ -347,31 +374,16 @@ int GenerateQuietMoves(const Position &position, Move *moves)
 	// Castling (treated as though we are always white)
 	if (castleFlags & CastleFlagWhiteKing)
 	{
-		const int kingRow = GetRow(position.KingPos[us]);
-		if (!IsBitSet(allPieces, MakeSquare(kingRow, FILE_F)) &&
-			!IsBitSet(allPieces, MakeSquare(kingRow, FILE_G)))
+		if (IsKingsideCastleLegal(position, allPieces, us, them))
 		{
-			// Verify that the king is not moving through check
-			if (!position.IsSquareAttacked(MakeSquare(kingRow, FILE_E), them) &&
-				!position.IsSquareAttacked(MakeSquare(kingRow, FILE_F), them))
-			{
-				moves[moveCount++] = GenerateCastleMove(position.KingPos[us], MakeSquare(kingRow, FILE_G));
-			}
+			moves[moveCount++] = GenerateCastleMove(position.KingPos[us], MakeSquare(GetRow(position.KingPos[us]), FILE_G));
 		}
 	}
 	if (castleFlags & CastleFlagWhiteQueen)
 	{
-		const int kingRow = GetRow(position.KingPos[us]);
-		if (!IsBitSet(allPieces, MakeSquare(kingRow, FILE_B)) &&
-			!IsBitSet(allPieces, MakeSquare(kingRow, FILE_C)) &&
-			!IsBitSet(allPieces, MakeSquare(kingRow, FILE_D)))
+		if (IsQueensideCastleLegal(position, allPieces, us, them))
 		{
-			// Verify that the king is not moving through check
-			if (!position.IsSquareAttacked(MakeSquare(kingRow, FILE_D), them) &&
-				!position.IsSquareAttacked(MakeSquare(kingRow, FILE_E), them))
-			{
-				moves[moveCount++] = GenerateCastleMove(position.KingPos[us], MakeSquare(kingRow, FILE_C));
-			}
+			moves[moveCount++] = GenerateCastleMove(position.KingPos[us], MakeSquare(GetRow(position.KingPos[us]), FILE_C));
 		}
 	}
 
@@ -425,6 +437,8 @@ int GenerateCaptureMoves(const Position &position, Move *moves)
 	return moveCount;
 }
 
+// Generates pseudo-legal quiet moves that give check to the opponent king.  This includes both direct and revealed checks.
+// For simplicity, we don't generate castling, promotion or e.p. checks
 int GenerateCheckingMoves(const Position &position, Move *moves)
 {
 	int moveCount = 0;
@@ -445,6 +459,7 @@ int GenerateCheckingMoves(const Position &position, Move *moves)
 		const Bitboard potentialPawns = GetPawnMoves(to, them);
 		if (potentialPawns & emptySquares)
 		{
+			// This is a bit funky, but if the target checking square is on rank 4, we can do a double pawn push, and check the king.
 			if (GetRow(to) == RANK_4 && us == WHITE)
 			{
 				const Square from = MakeSquare(RANK_2, GetColumn(to));
@@ -455,7 +470,7 @@ int GenerateCheckingMoves(const Position &position, Move *moves)
 			}
 			else if (GetRow(to) == RANK_5 && us == BLACK)
 			{
-				const Square from = MakeSquare(RANK_2, GetColumn(to));
+				const Square from = MakeSquare(RANK_7, GetColumn(to));
 				if (IsBitSet(ourPieces & position.Pieces[PAWN], from))
 				{
 					moves[moveCount++] = GenerateMove(from, to);
@@ -483,6 +498,8 @@ int GenerateCheckingMoves(const Position &position, Move *moves)
 	{
 		const Square from = PopFirstBit(b);
 
+		// Build the set of attackable squares that can give check to the king.  This includes friendly pieces that by moving would
+		// cause a revealed check.
 		Bitboard attacks;
 		const PieceType ourPiece = GetPieceType(position.Board[from]);
 		if (ourPiece == QUEEN)
@@ -531,9 +548,6 @@ int GenerateCheckingMoves(const Position &position, Move *moves)
 							revealedMoves |= GetPawnMoves(MakeSquare(row == RANK_2 ? RANK_4 : RANK_5, GetColumn(to)), us) & emptySquares;
 						}
 
-						// Pawn captures
-						revealedMoves |= GetPawnAttacks(to, us) & emptySquares;
-
 						revealedMoves &= ~GetSquaresBetween(from, kingSquare);
 					}
 					break;
@@ -545,12 +559,23 @@ int GenerateCheckingMoves(const Position &position, Move *moves)
 					{
 						revealedMoves = GetBishopAttacks(to, allPieces) & emptySquares;
 					}
+					else
+					{
+						ASSERT(false);
+					}
 					break;
 				case ROOK:
 					if (ourPiece == BISHOP)
 					{
 						revealedMoves = GetRookAttacks(to, allPieces) & emptySquares;
 					}
+					else
+					{
+						ASSERT(false);
+					}
+					break;
+				case QUEEN:
+					ASSERT(false);
 					break;
 				case KING:
 					revealedMoves = GetKingAttacks(to) & emptySquares & ~GetSquaresBetween(from, kingSquare);
@@ -569,6 +594,7 @@ int GenerateCheckingMoves(const Position &position, Move *moves)
 	return moveCount;
 }
 
+// Generates legal moves to escape from check.  If no legal moves are generated, we are in checkmate.
 int GenerateCheckEscapeMoves(const Position &position, Move *moves)
 {
 	const Color us = position.ToMove;
@@ -708,4 +734,105 @@ int GenerateCheckEscapeMoves(const Position &position, Move *moves)
 	}
 
 	return moveCount;
+}
+
+bool IsMovePseudoLegal(const Position &position, const Move move)
+{
+	const Square from = GetFrom(move);
+	const Square to = GetTo(move);
+
+	const Color us = position.ToMove;
+	const Color them = FlipColor(us);
+	
+	const Piece piece = position.Board[from];
+	const Piece targetPiece = position.Board[to];
+	if (piece == PIECE_NONE ||
+		// Have to move our own piece
+		GetPieceColor(piece) != us ||
+		// Can't be capturing our own pieces
+		(targetPiece != PIECE_NONE && GetPieceColor(position.Board[to]) == us))
+	{
+		return false;
+	}
+
+	const Move moveType = GetMoveType(move);
+	if (moveType == MoveTypeNone)
+	{
+		// Verify that the given piece type can actually make it to the the target square
+		switch (GetPieceType(piece))
+		{
+		case KNIGHT: return IsBitSet(GetKnightAttacks(from), to);
+		case BISHOP: return IsBitSet(GetBishopAttacks(from, position.GetAllPieces()), to);
+		case ROOK: return IsBitSet(GetRookAttacks(from, position.GetAllPieces()), to);
+		case QUEEN: return IsBitSet(GetBishopAttacks(from, position.GetAllPieces()) | GetRookAttacks(from, position.GetAllPieces()), to);
+		case KING: return IsBitSet(GetKingAttacks(from), to);
+		}
+	}
+
+	if (moveType == MoveTypeNone ||
+		moveType == MoveTypePromotion)
+	{
+		if (GetPieceType(piece) == PAWN)
+		{
+			if (position.Board[to] == PIECE_NONE)
+			{
+				// Single pawn moves
+				if (IsBitSet(GetPawnMoves(from, us), to))
+				{
+					return true;
+				}
+
+				// Double pawn push, intermediate square and final square must be
+				// empty, and we must be moving up two squares
+				const Square nextSquare = GetFirstBitIndex(GetPawnMoves(from, us));
+				if (position.Board[nextSquare] == PIECE_NONE &&
+					IsBitSet(GetPawnMoves(nextSquare, us), to))
+				{
+					return true;
+				}
+			}
+			else
+			{
+				// Has to be a pawn capture
+				return IsBitSet(GetPawnAttacks(from, us), to);
+			}
+		}
+	}
+	else if (moveType == MoveTypeCastle)
+	{
+		if (GetPieceType(piece) == KING)
+		{
+			// Castling is a bit tricky, as we don't do any MakeMove validation of castling moves
+			const int castleFlags = us == WHITE ? position.CastleFlags : position.CastleFlags >> 2;
+
+			if (castleFlags & CastleFlagWhiteKing)
+			{
+				if (!IsKingsideCastleLegal(position, position.GetAllPieces(), us, them) ||
+					GetColumn(to) != FILE_G)
+				{
+					return false;
+				}
+				return true;
+			}
+			if (castleFlags & CastleFlagWhiteQueen)
+			{
+				if (!IsQueensideCastleLegal(position, position.GetAllPieces(), us, them) ||
+					GetColumn(to) != FILE_C)
+				{
+					return false;
+				}
+				return true;
+			}
+		}
+	}
+	else if (moveType == MoveTypeEnPassent)
+	{
+		if (GetPieceType(piece) == PAWN)
+		{
+			return IsBitSet(GetPawnAttacks(from, us), to) &&
+				position.EnPassent == to;
+		}
+	}
+
+	return false;
 }

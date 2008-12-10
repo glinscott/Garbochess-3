@@ -3,7 +3,10 @@
 #include <intrin.h>
 
 #if _DEBUG
-#define ASSERT(a) (!(a) ? throw : 0)
+extern "C" {
+void __declspec(dllimport) __stdcall DebugBreak(void);
+}
+#define ASSERT(a) (!(a) ? DebugBreak() : 0)
 #else
 #define ASSERT(a)
 #endif
