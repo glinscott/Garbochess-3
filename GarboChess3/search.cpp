@@ -43,7 +43,7 @@ bool FastSee(const Position &position, const Move move)
 	}
 
 	// We should only be making initially losing captures here
-	ASSERT(fromValue > pieceValues[PAWN] || GetMoveType(move) == MoveTypePromotion);
+	ASSERT(fromValue > pieceValues[PAWN] || GetMoveType(move) == MoveTypePromotion || toValue == 0);
 
 	const Bitboard enemyPieces = position.Colors[them];
 
@@ -197,7 +197,6 @@ class MoveSorter
 public:
 	MoveSorter()
 	{
-		at = 0;
 	}
 
 	inline int GetMoveCount() const
@@ -207,6 +206,7 @@ public:
 
 	inline void GenerateQCapture(const Position &position)
 	{
+		at = 0;
 		moveCount = GenerateCaptureMoves(position, moves);
 		moves[moveCount] = 0; // Sentinel move
 
@@ -221,6 +221,7 @@ public:
 
 	inline void GenerateCheckEscape(const Position &position)
 	{
+		at = 0;
 		moveCount = GenerateCheckEscapeMoves(position, moves);
 		moves[moveCount] = 0;
 
@@ -234,6 +235,21 @@ public:
 				ScoreCaptureMove(moves[i], fromPiece, toPiece) :
 				// Score non-captures as equal
 				0;
+		}
+	}
+
+	inline void GenerateChecks(const Position &position)
+	{
+		at = 0;
+		moveCount = GenerateCheckingMoves(position, moves);
+		moves[moveCount] = 0;
+
+		for (int i = 0; i < moveCount; i++)
+		{
+			const PieceType fromPiece = GetPieceType(position.Board[GetFrom(moves[i])]);
+			const PieceType toPiece = GetPieceType(position.Board[GetTo(moves[i])]);
+
+			moveScores[i] = 0;
 		}
 	}
 
@@ -385,7 +401,46 @@ int QSearch(Position &position, int alpha, const int beta, const int depth)
 		return eval;
 	}
 
-	// TODO: Generate and search quiet checks
+	moves.GenerateChecks(position);
+
+	while ((move = moves.NextMove()) != 0)
+	{
+		if (!FastSee(position, move))
+		{
+			// TODO: use SEE when depth >= 0? - tapered q-search ideas
+			continue;
+		}
+
+		MoveUndo moveUndo;
+		position.MakeMove(move, moveUndo);
+
+		if (!position.CanCaptureKing())
+		{
+			ASSERT(position.IsInCheck());
+
+			int value = -QSearchCheck(position, -beta, -alpha, depth - 1);
+
+			position.UnmakeMove(move, moveUndo);
+			
+			if (value > eval)
+			{
+				eval = value;
+				if (value > alpha)
+				{
+					alpha = value;
+					if (value >= beta)
+					{
+						return beta;
+					}
+				}
+			}
+		}
+		else
+		{
+			position.UnmakeMove(move, moveUndo);
+		}
+	}
+	
 	return eval;
 }
 
@@ -404,9 +459,10 @@ int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 		return MinEval;
 	}
 
-	// TODO: singular move extension?
-
 	int bestScore = MinEval;
+
+	// Single-reply to check extension
+	const int depthReduction = moves.GetMoveCount() == 1 ? 1 : OnePly;
 
 	Move move;
 	while ((move = moves.NextMove()) != 0)
@@ -423,7 +479,7 @@ int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 		}
 		else
 		{
-			value = -QSearch(position, -beta, -alpha, depth - OnePly);
+			value = -QSearch(position, -beta, -alpha, depth - depthReduction);
 		}
 
 		position.UnmakeMove(move, moveUndo);

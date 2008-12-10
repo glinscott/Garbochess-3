@@ -648,7 +648,7 @@ int Position::GetPsqEval(int gameStage) const
 
 void Position::VerifyBoard() const
 {
-	const bool verifyBoard = false;
+	const bool verifyBoard = true;
 	const bool verifyHash = false;
 	const bool verifyPsqEval = false;
 

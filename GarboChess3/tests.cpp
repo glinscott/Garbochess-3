@@ -338,5 +338,5 @@ void RunTests()
 	position.Initialize("8/Pk6/8/8/8/8/6Kp/8 w - -");
 	perft(position, 3);*/
 
-	RunPerftSuite(3);
+	RunPerftSuite(4);
 }

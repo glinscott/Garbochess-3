@@ -165,7 +165,7 @@ int SuperBasicQsearchTest(Position &position, int alpha, int beta, Move &bestMov
 	int bestScore = MinEval;
 	for (int i = 0; i < (int)moves.size(); i++)
 	{
-//		const std::string fooString = GetNiceString(position, moves[i]);
+		const std::string fooString = GetMoveSAN(position, moves[i]);
 		MoveUndo moveUndo;
 		position.MakeMove(moves[i], moveUndo);
 
@@ -184,12 +184,12 @@ int SuperBasicQsearchTest(Position &position, int alpha, int beta, Move &bestMov
 		else
 		{
 			Move tmp;
-			score = -SuperBasicQsearchTest(position, -beta, -alpha, tmp, depth - 1);
+			score = -SuperBasicQsearchTest(position, -beta, -alpha, tmp, depth - (position.IsInCheck() ? 0 : 1));
 		}
 		position.UnmakeMove(moves[i], moveUndo);
 
-//		if (depth == 3)
-//		std::printf("Searched %d.%s - > %d\n", i, fooString.c_str(), score);
+		if (depth == 3)
+		std::printf("Searched %d.%s - > %d\n", i, fooString.c_str(), score);
 
 		if (score > bestScore || bestMove == 0)
 		{
@@ -223,7 +223,7 @@ std::vector<std::string> tokenize(std::string &in, const std::string &tok)
 	return res;
 }
 
-void TestSuite()
+void TestSuite(int depth)
 {
 	std::FILE* file;
 	fopen_s(&file, "tests/wac.epd", "rt");
@@ -245,7 +245,7 @@ void TestSuite()
 
 				std::vector<std::string> moves = tokenize(fen, " ;");
 				Move bestMove;
-				int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, 2);
+				int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, depth);
 				std::string bestMoveString = GetMoveSAN(position, bestMove);
 
 				bool match = false;
@@ -292,16 +292,15 @@ int main()
 	Position::StaticInitialize();
 	InitializePsqTable();
 
-	RunTests();
+//	RunTests();
 
-//	TestSuite();
+//	TestSuite(2);
 
-/*	Position position;
-	// TODO: test this with q-search checks on.
-	//position.Initialize("7k/p7/1R5K/6r1/6p1/6P1/8/8 w - -");
+	Position position;
+	position.Initialize("3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - -");
 	Move bestMove;
 	int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, 3);
-	printf("%s,%d\n", GetNiceString(position, bestMove).c_str(),score);*/
+	printf("%s,%d\n", GetMoveSAN(position, bestMove).c_str(),score);
 
 	return 0;
 }

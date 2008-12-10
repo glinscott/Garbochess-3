@@ -2,6 +2,6 @@
 - 16 million NPS on perft 64bit now after psq tables
 
 WAC results:
-0 ply - 57/300
-1 ply - 83/300
-2 ply - 132/300
+0 ply - 60/300
+1 ply - 119/300
+2 ply - 131/300

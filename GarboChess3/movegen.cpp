@@ -561,7 +561,8 @@ int GenerateCheckingMoves(const Position &position, Move *moves)
 					}
 					else
 					{
-						ASSERT(false);
+						ASSERT(ourPiece == QUEEN);
+						revealedMoves = 0;
 					}
 					break;
 				case ROOK:
@@ -571,7 +572,8 @@ int GenerateCheckingMoves(const Position &position, Move *moves)
 					}
 					else
 					{
-						ASSERT(false);
+						ASSERT(ourPiece == QUEEN);
+						revealedMoves = 0;
 					}
 					break;
 				case QUEEN:
