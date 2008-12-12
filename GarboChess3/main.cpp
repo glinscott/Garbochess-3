@@ -9,32 +9,6 @@
 
 void RunTests();
 
-void GenerateLegalMoves(Position &position, std::vector<Move> &legalMoves)
-{
-	Move moves[256];
-	int moveCount;
-	if (position.IsInCheck())
-	{
-		moveCount = GenerateCheckEscapeMoves(position, moves);
-	}
-	else
-	{
-		moveCount = GenerateQuietMoves(position, moves);
-		moveCount += GenerateCaptureMoves(position, moves + moveCount);
-	}
-
-	for (int i = 0; i < moveCount; i++)
-	{
-		MoveUndo moveUndo;
-		position.MakeMove(moves[i], moveUndo);
-		if (!position.CanCaptureKing())
-		{
-			legalMoves.push_back(moves[i]);
-		}
-		position.UnmakeMove(moves[i], moveUndo);
-	}
-}
-
 std::string GetSquareSAN(const Square square)
 {
 	std::string result;
@@ -76,12 +50,12 @@ std::string GetMoveSAN(Position &position, const Move move)
 		case KING: result += "K"; break;
 		}
 
-		std::vector<Move> legalMoves;
-		GenerateLegalMoves(position, legalMoves);
+		Move legalMoves[256];
+		int legalMoveCount = GenerateLegalMoves(position, legalMoves);
 
 		// Do we need to disambiguate?
 		bool dupe = false, rowDiff = true, columnDiff = true;
-		for (int i = 0; i < (int)legalMoves.size(); i++)
+		for (int i = 0; i < legalMoveCount; i++)
 		{
 			if (GetFrom(legalMoves[i]) != from &&
 				GetTo(legalMoves[i]) == to &&
@@ -158,12 +132,12 @@ std::string GetMoveSAN(Position &position, const Move move)
 
 int SuperBasicQsearchTest(Position &position, int alpha, int beta, Move &bestMove, int depth)
 {
-	std::vector<Move> moves;
-	GenerateLegalMoves(position, moves);
+	Move moves[256];
+	int moveCount = GenerateLegalMoves(position, moves);
 
 	bestMove = 0;
 	int bestScore = MinEval;
-	for (int i = 0; i < (int)moves.size(); i++)
+	for (int i = 0; i < moveCount; i++)
 	{
 //		const std::string fooString = GetMoveSAN(position, moves[i]);
 		MoveUndo moveUndo;
@@ -291,8 +265,9 @@ int main()
 	InitializeBitboards();
 	Position::StaticInitialize();
 	InitializePsqTable();
+	InitializeSearch();
 
-//	RunTests();
+	RunTests();
 
 	TestSuite(2);
 

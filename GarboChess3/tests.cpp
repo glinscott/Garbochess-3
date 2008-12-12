@@ -7,8 +7,6 @@
 #include <cstdio>
 #include <vector>
 
-void GenerateLegalMoves(Position &position, std::vector<Move> &legalMoves);
-
 void PrintBitboard(const Bitboard b)
 {
 	for (int row = 0; row < 8; row++)
@@ -154,19 +152,47 @@ void MoveSortingTest()
 	// TODO: test move sorting (might have to factor it a bit better)
 }
 
+void DrawTests()
+{
+	Position position;
+	position.Initialize("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+	
+	Move move[10];
+	MoveUndo moveUndo[10];
+	
+	move[0] = MakeMoveFromUciString("g1f3");
+	move[1] = MakeMoveFromUciString("g8f6");
+	move[2] = MakeMoveFromUciString("f3g1");
+	move[3] = MakeMoveFromUciString("f6g8");
+
+	for (int i = 0; i < 4; i++)
+	{
+		ASSERT(!position.IsDraw());
+		position.MakeMove(move[i], moveUndo[i]);
+	}
+	ASSERT(position.IsDraw());
+	for (int i = 3; i >=0; i--)
+	{
+		position.UnmakeMove(move[i], moveUndo[i]);
+		ASSERT(!position.IsDraw());
+	}
+
+	// TODO: maybe a few more tests here?
+}
+
 u64 perft(Position &position, int depth)
 {
 	const bool verifyCheckingMoves = false;
 
 	if (verifyCheckingMoves)
 	{
-		std::vector<Move> moves;
-		GenerateLegalMoves(position, moves);
+		Move moves[256];
+		int moveCount = GenerateLegalMoves(position, moves);
 
 		Move checkingMoves[64];
 		int checkingMovesCount = GenerateCheckingMoves(position, checkingMoves);
 
-		for (int i = 0; i < (int)moves.size(); i++)
+		for (int i = 0; i < moveCount; i++)
 		{
 			bool exists = false;
 			for (int j = 0; j < checkingMovesCount; j++)
@@ -333,10 +359,11 @@ void RunTests()
 {
 	UnitTests();
 	SeeTests();
+	DrawTests();
 
 /*	Position position;
 	position.Initialize("8/Pk6/8/8/8/8/6Kp/8 w - -");
 	perft(position, 3);*/
 
-	RunPerftSuite(4);
+//	RunPerftSuite(4);
 }

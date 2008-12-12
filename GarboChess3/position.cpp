@@ -129,6 +129,11 @@ void Position::Initialize(const std::string &fen)
 		Fifty = 0;
 	}
 
+	for (int i = 0; i < Fifty; i++)
+	{
+		DrawKeys[i] = 0;
+	}
+
 	Hash = GetHash();
 	PawnHash = GetPawnHash();
 
@@ -221,6 +226,8 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 	moveUndo.EnPassent = EnPassent;
 	moveUndo.Fifty = Fifty;
 	moveUndo.Captured = target;
+
+	DrawKeys[Fifty] = Hash;
 
 	if (EnPassent != -1)
 	{

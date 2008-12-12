@@ -802,7 +802,8 @@ bool IsMovePseudoLegal(const Position &position, const Move move)
 	}
 	else if (moveType == MoveTypeCastle)
 	{
-		if (GetPieceType(piece) == KING)
+		// We can't be in check to allow a castle move
+		if (GetPieceType(piece) == KING && !position.IsInCheck())
 		{
 			// Castling is a bit tricky, as we don't do any MakeMove validation of castling moves
 			const int castleFlags = us == WHITE ? position.CastleFlags : position.CastleFlags >> 2;
@@ -829,4 +830,33 @@ bool IsMovePseudoLegal(const Position &position, const Move move)
 	}
 
 	return false;
+}
+
+int GenerateLegalMoves(Position &position, Move *legalMoves)
+{
+	Move moves[256];
+	int moveCount;
+	if (position.IsInCheck())
+	{
+		moveCount = GenerateCheckEscapeMoves(position, moves);
+	}
+	else
+	{
+		moveCount = GenerateQuietMoves(position, moves);
+		moveCount += GenerateCaptureMoves(position, moves + moveCount);
+	}
+
+	int legalCount = 0;
+	for (int i = 0; i < moveCount; i++)
+	{
+		MoveUndo moveUndo;
+		position.MakeMove(moves[i], moveUndo);
+		if (!position.CanCaptureKing())
+		{
+			legalMoves[legalCount++] = moves[i];
+		}
+		position.UnmakeMove(moves[i], moveUndo);
+	}
+
+	return legalCount;
 }

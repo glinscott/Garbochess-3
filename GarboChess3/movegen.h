@@ -6,6 +6,9 @@ int GenerateCheckingMoves(const Position &position, Move *moves);
 int GenerateCheckEscapeMoves(const Position &position, Move *moves);
 bool IsMovePseudoLegal(const Position &position, const Move move);
 
+// Slow, and should not be used.
+int GenerateLegalMoves(Position &position, Move *legalMoves);
+
 // Attack generation
 
 extern Bitboard PawnMoves[2][64];

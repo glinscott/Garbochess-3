@@ -4,6 +4,8 @@
 #include "search.h"
 #include "evaluation.h"
 
+#include <cstdlib>
+
 template<class T>
 void Swap(T& a, T &b)
 {
@@ -11,6 +13,13 @@ void Swap(T& a, T &b)
 	a = b;
 	b = tmp;
 }
+
+const int MoveSentinelScore = MinEval - 1;
+const int MaxPly = 99;
+const int MaxThreads = 8;
+
+// TODO: make this use contempt?
+const int DrawScore = 0;
 
 // This version of SEE does not calculate the exact material imbalance, it just returns true = winning or equal, false = losing
 bool FastSee(const Position &position, const Move move)
@@ -191,6 +200,26 @@ bool FastSee(const Position &position, const Move move)
 	}
 }
 
+void StableSortMoves(Move *moves, int *moveScores, int moveCount)
+{
+	// Stable sort the moves
+	for (int i = 1; i < moveCount; i++)
+	{
+		int value = moveScores[i];
+		Move move = moves[i];
+
+		int j = i - 1;
+		for (; j >= 0 && moveScores[j] < value; j--)
+		{
+			moveScores[j + 1] = moveScores[j];
+			moves[j + 1] = moves[j];
+		}
+
+		moveScores[j + 1] = value;
+		moves[j + 1] = move;
+	}
+}
+
 template<int maxMoves>
 class MoveSorter
 {
@@ -259,13 +288,22 @@ public:
 		// The move initialization code stores a sentinel move at the end of the movelist.
 		ASSERT(at <= moveCount);
 
+		int bestScore = moveScores[at], bestIndex = at;
 		for (int i = at + 1; i < moveCount; i++)
 		{
-			if (moveScores[i] > moveScores[at])
+			ASSERT(moveScores[i] >= MinEval && moveScores[i] <= MaxEval);
+
+			if (moveScores[i] > bestScore)
 			{
-				Swap(moveScores[at], moveScores[i]);
-				Swap(moves[at], moves[i]);
+				bestIndex = i;
+				bestScore = moveScores[i];
 			}
+		}
+
+		if (bestIndex != at)
+		{
+			Swap(moveScores[at], moveScores[bestIndex]);
+			Swap(moves[at], moves[bestIndex]);
 		}
 
 		ASSERT((at + 1 >= moveCount) || (moveScores[at] >= moveScores[at + 1]));
@@ -318,12 +356,32 @@ private:
 	int at;
 };
 
+struct SearchInfo
+{
+	int NodeCount;
+	int QNodeCount;
+
+	Move Killers[MaxPly][2];
+};
+
+const int SearchInfoPageSize = 4096;
+u64 searchInfoThreads;
+
+SearchInfo &GetSearchInfo(int thread)
+{
+	return (SearchInfo&)*((SearchInfo*)(searchInfoThreads + (SearchInfoPageSize * thread)));
+}
 
 // depth == 0 is normally what is called for q-search.
 // Checks are searched when depth >= -(OnePly / 2).  Depth is decreased by 1 for checks
 int QSearch(Position &position, int alpha, const int beta, const int depth)
 {
-	// TODO: check for draws here?
+	ASSERT(!position.IsInCheck());
+
+	if (position.IsDraw())
+	{
+		return DrawScore;
+	}
 
 	// What do we want from our evaluation? - this needs to be decided (mobility/threat information?)
 	int eval = Evaluate(position);
@@ -347,9 +405,6 @@ int QSearch(Position &position, int alpha, const int beta, const int depth)
 	Move move;
 	while ((move = moves.NextMove()) != 0)
 	{
-/*		std::string GetNiceString(Position &position, const Move move);
-		const std::string fooString = GetNiceString(position, move);*/
-
 		if (!FastSee(position, move))
 		{
 			// TODO: we are excluding losing checks here as well - is this safe?
@@ -448,7 +503,10 @@ int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 {
 	ASSERT(position.IsInCheck());
 
-	// TODO: check for draws here
+	if (position.IsDraw())
+	{
+		return DrawScore;
+	}
 
 	MoveSorter<64> moves;
 	moves.GenerateCheckEscape(position);
@@ -459,7 +517,7 @@ int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 		return MinEval;
 	}
 
-	int bestScore = MinEval;
+	int bestScore = MoveSentinelScore;
 
 	// Single-reply to check extension
 	const int depthReduction = moves.GetMoveCount() == 1 ? 1 : OnePly;
@@ -501,5 +559,97 @@ int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 	return bestScore;
 }
 
+int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, int beta, int depth)
+{
+	return 0;
+}
+
+int SearchRoot(Position &position, Move *moves, int *moveScores, int moveCount, int alpha, const int beta, const int depth)
+{
+	int originalAlpha = alpha;
+	int bestScore = MoveSentinelScore;
+
+	// Now actually search the nodes
+	for (int i = 0; i < moveCount; i++)
+	{
+		// Search them
+		MoveUndo moveUndo;
+		position.MakeMove(moves[i], moveUndo);
+
+		int value;
+		if (bestScore == MoveSentinelScore)
+		{
+//			value = -SearchPV(position, -beta, -alpha, 
+		}
+		else
+		{
+//			value = -Search(position, -beta, -alpha, 
+		}
+
+		position.UnmakeMove(moves[i], moveUndo);
+
+		// Update move scores
+		if (value <= alpha)
+		{
+			moveScores[i] = originalAlpha;
+		}
+		else if (value >= beta)
+		{
+			moveScores[i] = beta;
+		}
+		else
+		{
+			moveScores[i] = value;
+		}
+	}
+
+	return bestScore;
+}
+
+void IterativeDeepening(Position &position)
+{
+	Move moves[256];
+	int moveCount = GenerateLegalMoves(position, moves);
+
+	// Initial sorting of root moves is done by q-search scores
+	int moveScores[256];
+	for (int i = 0; i < moveCount; i++)
+	{
+		MoveUndo moveUndo;
+		position.MakeMove(moves[i], moveUndo);
+		moveScores[i] = -QSearch(position, MinEval, MaxEval, 0);
+		position.UnmakeMove(moves[i], moveUndo);
+	}
+
+	StableSortMoves(moves, moveScores, moveCount);
+
+	int alpha = MinEval, beta = MaxEval;
+
+	// Iterative deepening loop
+	for (int depth = 1; depth < 99; depth++)
+	{
+		for (int i = 0; i < moveCount; i++)
+		{
+			// Reset moveScores for things we haven't searched yet
+			moveScores[i] = MinEval;
+		}
+
+		int value = SearchRoot(position, moves, moveScores, moveCount, alpha, beta, depth);
+
+		StableSortMoves(moves, moveScores, moveCount);
+	}
+
+	// Best move is the first move in the list
+}
+
+void InitializeSearch()
+{
+	ASSERT(sizeof(SearchInfo) < SearchInfoPageSize);
+
+	searchInfoThreads = u64(malloc(SearchInfoPageSize * (MaxThreads + 1)));
+	searchInfoThreads += SearchInfoPageSize - (searchInfoThreads & (SearchInfoPageSize - 1));
+}
+
+// TODO: check extensions limited by SEE in non-PV nodes?
 // TODO: investigate using root move sorting in PV nodes (need PV hash table)
 // TODO: investigate heavy pruning of the search tree (>500cp eval = pruning time)

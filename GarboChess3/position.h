@@ -28,6 +28,7 @@ public:
 	Color ToMove;
 	Square EnPassent;
 	Piece Board[64];
+	u64 DrawKeys[100];
 
 	inline Bitboard GetAllPieces() const { return Colors[WHITE] | Colors[BLACK]; }
 	
@@ -46,6 +47,24 @@ public:
 
 	Bitboard GetAttacksTo(const Square square) const;
 	Bitboard GetPinnedPieces(const Square square, const Color us) const;
+
+	inline bool IsDraw() const
+	{
+		if (Fifty >= 50)
+		{
+			return true;
+		}
+
+		// Check our previous positions.  If the hash key matches, it is a draw.
+		for (int i = Fifty - 4; i >= 0; i -= 2)
+		{
+			if (DrawKeys[i] == Hash)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
 
 private:
 	void VerifyBoard() const;
