@@ -295,6 +295,7 @@ int main()
 	Position::StaticInitialize();
 	InitializePsqTable();
 	InitializeSearch();
+	InitializeHash(16000000);
 
 	RunTests();
 

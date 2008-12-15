@@ -231,7 +231,8 @@ enum MoveGenerationState
 	MoveGenerationState_GenerateQuietMoves,
 	MoveGenerationState_QuietMoves,
 	MoveGenerationState_GenerateLosingCaptures,
-	MoveGenerationState_LosingCaptures
+	MoveGenerationState_LosingCaptures,
+	MoveGenerationState_CheckEscapes,
 };
 
 template<int maxMoves>
@@ -272,6 +273,8 @@ public:
 		at = 0;
 		moveCount = GenerateCheckEscapeMoves(position, moves);
 		moves[moveCount] = 0;
+
+		state = MoveGenerationState_CheckEscapes;
 
 		for (int i = 0; i < moveCount; i++)
 		{
@@ -343,7 +346,7 @@ public:
 
 	inline Move NextNormalMove()
 	{
-		ASSERT(state >= MoveGenerationState_Hash && state <= MoveGenerationState_LosingCaptures);
+		ASSERT(state >= MoveGenerationState_Hash && state <= MoveGenerationState_CheckEscapes);
 
 		switch (state)
 		{
@@ -433,6 +436,9 @@ public:
 				return losingCaptures[at++];
 			}
 			break;
+
+		case MoveGenerationState_CheckEscapes:
+			return PickBestMove();
 		}
 
 		return 0;
@@ -693,20 +699,7 @@ int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 	return bestScore;
 }
 
-int SearchCheck(Position &position, SearchInfo &searchInfo, const int beta, const int depth)
-{
-	ASSERT(position.IsInCheck());
-
-	if (position.IsDraw())
-	{
-		return DrawScore;
-	}
-
-	// TODO: Lookup hash/store hash once we use it
-	return 0;
-}
-
-int Search(Position &position, SearchInfo &searchInfo, const int beta, const int depth)
+int Search(Position &position, SearchInfo &searchInfo, const int beta, const int depth, const bool inCheck)
 {
 	if (position.IsDraw())
 	{
@@ -741,11 +734,28 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		hashMove = 0;
 	}
 	
-	// TODO: Null-move
+	// TODO: Null-move!
 
 	MoveSorter<256> moves(position);
-	moves.InitializeNormalMoves(hashMove, searchInfo.Killers[depth][0], searchInfo.Killers[depth][1]);
+	bool singular = false;
+	if (!inCheck)
+	{
+		moves.InitializeNormalMoves(hashMove, searchInfo.Killers[depth][0], searchInfo.Killers[depth][1]);
+	}
+	else
+	{
+		moves.GenerateCheckEscape();
+		if (moves.GetMoveCount() == 0)
+		{
+		}
+		else if (moves.GetMoveCount() == 1)
+		{
+			// TODO enable this once basic search testing is done
+			// singular = true;
+		}
+	}
 	
+	int bestScore = MoveSentinelScore;
 	Move move;
 	while ((move = moves.NextNormalMove()) != 0)
 	{
@@ -754,8 +764,34 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 		if (!position.CanCaptureKing())
 		{
-			// Search move ...
+			int value;
+
+			// Search move
+			const bool isChecking = position.IsInCheck();
+			const int newDepth = isChecking ? depth : depth - OnePly;
+
+			if (newDepth <= 0)
+			{
+				 value = -QSearch(position, -beta, 1 - beta, 0);
+			}
+			else
+			{
+				value = -Search(position, searchInfo, 1 - beta, newDepth, isChecking);
+			}
+
 			position.UnmakeMove(move, moveUndo);
+
+			if (value > bestScore)
+			{
+				bestScore = value;
+
+				if (value >= beta)
+				{
+					// TODO: update history
+					// TODO: store hash
+					return value;
+				}
+			}
 		}
 		else
 		{
@@ -763,12 +799,107 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		}
 	}
 
-	return 0;
+	return bestScore;
 }
 
-int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int beta, const int depth)
+int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int beta, const int depth, const bool inCheck)
 {
-	return 0;
+	if (depth <= 0)
+	{
+		return QSearch(position, alpha, beta, 0);
+	}
+
+	if (position.IsDraw())
+	{
+		return DrawScore;
+	}
+
+	HashEntry *hashEntry;
+	Move hashMove;
+	if (ProbeHash(position.Hash, hashEntry))
+	{
+		hashMove = hashEntry->Move;
+	}
+
+	// TODO: use root move sorting in PV positions?
+	MoveSorter<256> moves(position);
+	bool singular = false;
+
+	if (!inCheck)
+	{
+		moves.InitializeNormalMoves(hashMove, searchInfo.Killers[depth][0], searchInfo.Killers[depth][1]);
+	}
+	else
+	{
+		moves.GenerateCheckEscape();
+		if (moves.GetMoveCount() == 0)
+		{
+			return MinEval;
+		}
+		else if (moves.GetMoveCount() == 1)
+		{
+			// TODO: re-enable this after basic search tree testing is done
+//			singular = true;
+		}
+	}
+
+	int bestScore = MoveSentinelScore;
+	Move move;
+	while ((move = moves.NextNormalMove()) != 0)
+	{
+		MoveUndo moveUndo;
+		position.MakeMove(move, moveUndo);
+
+		if (!position.CanCaptureKing())
+		{
+			int value;
+
+			// Search move
+			const bool isChecking = position.IsInCheck();
+			const int newDepth = (isChecking || singular) ? depth : depth - OnePly;
+
+			if (bestScore == MoveSentinelScore)
+			{
+				value = -SearchPV(position, searchInfo, -beta, -alpha, newDepth, isChecking);
+			}
+			else
+			{
+				if (newDepth <= 0)
+				{
+					value = -QSearch(position, -beta, -alpha, 0);
+				}
+				else
+				{
+					value = -Search(position, searchInfo, -alpha, newDepth, isChecking);
+				}
+
+				if (value > alpha)
+				{
+					value = -SearchPV(position, searchInfo, -beta, -alpha, newDepth, isChecking);
+				}
+			}
+
+			position.UnmakeMove(move, moveUndo);
+
+			if (value > bestScore)
+			{
+				bestScore = value;
+
+				if (value >= beta)
+				{
+					// TODO: update history
+					// TODO: store hash
+					return value;
+				}
+			}
+		}
+		else
+		{
+			position.UnmakeMove(move, moveUndo);
+		}
+	}
+
+	return bestScore;
 }
 
 int SearchRoot(Position &position, Move *moves, int *moveScores, int moveCount, int alpha, const int beta, const int depth)
@@ -783,14 +914,20 @@ int SearchRoot(Position &position, Move *moves, int *moveScores, int moveCount, 
 		MoveUndo moveUndo;
 		position.MakeMove(moves[i], moveUndo);
 
+		const bool isChecking = position.IsInCheck();
+		const int newDepth = !isChecking ? depth : depth - OnePly;
 		int value;
 		if (bestScore == MoveSentinelScore)
 		{
-//			value = -SearchPV(position, -beta, -alpha, 
+			value = -SearchPV(position, GetSearchInfo(0), -beta, -alpha, newDepth, isChecking);
 		}
 		else
 		{
-//			value = -Search(position, -beta, -alpha, 
+			value = -Search(position, GetSearchInfo(0), -alpha, newDepth, isChecking);
+			if (value > alpha)
+			{
+				value = -SearchPV(position, GetSearchInfo(0), -beta, -alpha, newDepth, isChecking);
+			}
 		}
 
 		position.UnmakeMove(moves[i], moveUndo);
