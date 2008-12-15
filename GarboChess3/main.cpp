@@ -3,12 +3,41 @@
 #include "movegen.h"
 #include "evaluation.h"
 #include "search.h"
+#include "hashtable.h"
 
 #include <algorithm>
 #include <vector>
 
 void RunTests();
 
+// Hashtable definitions
+HashEntry *HashTable = 0;
+u64 HashMask = 0;
+int HashDate = 0;
+
+void InitializeHash(int hashSize)
+{
+	for (HashMask = 1; HashMask < (hashSize / sizeof(HashEntry)); HashMask *= 2);
+	HashMask /= 2;
+	HashMask--;
+
+	if (HashTable)
+	{
+		free(HashTable);
+	}
+	HashTable = (HashEntry*)malloc((size_t)(HashMask * sizeof(HashEntry)));
+
+	// Minor speed optimization, so we don't need to mask this out when we access the hash-table
+	HashMask &= ~3;
+}
+
+void IncrementHashDate()
+{
+	ASSERT(HashDate <= 0xf);
+	HashDate = (HashDate + 1) & 0xf;
+}
+
+// Random move helpers
 std::string GetSquareSAN(const Square square)
 {
 	std::string result;

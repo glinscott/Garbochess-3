@@ -1,0 +1,100 @@
+const int HashFlagsAlpha = 0;
+const int HashFlagsBeta = 1;
+const int HashFlagsExact = 2;
+const int HashFlagsMask = 3;
+
+struct HashEntry
+{
+	u32 Lock;
+	s16 Score;
+	Move Move;
+	u8 Depth;
+	u8 Extra;
+
+	int GetHashFlags() const
+	{
+		return Extra & HashFlagsMask;
+	}
+
+	int GetHashDate() const
+	{
+		return Extra >> 4;
+	}
+};
+
+extern HashEntry *HashTable;
+extern u64 HashMask;
+extern int HashDate;
+
+// Hash size in bytes
+void InitializeHash(int hashSize);
+void IncrementHashDate();
+
+inline bool ProbeHash(const u64 hash, HashEntry *&result)
+{
+	const u64 base = hash & HashMask;
+	ASSERT(base + 4 <= HashMask);
+
+	const u32 lock = hash >> 32;
+	for (u64 i = base; i < base + 4; i++)
+	{
+		if (HashTable[i].Lock == lock)
+		{
+			result = &(HashTable[i]);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+inline void StoreHash(const u64 hash, const s16 score, const Move move, const int depth, const int flags)
+{
+	const u64 base = hash & HashMask;
+	ASSERT(base + 4 <= HashMask);
+
+	const u32 lock = hash >> 32;
+	int bestScore = 512;
+	u64 best;
+
+	for (u64 i = base; i < base + 4; i++)
+	{
+		if (HashTable[i].Lock == lock)
+		{
+			if (depth >= HashTable[i].Depth)
+			{
+				best = i;
+				break;
+			}
+			return;
+		}
+		
+		int matchScore;
+		if (HashTable[i].GetHashDate() != HashDate)
+		{
+			// We want to always allow overwriting of hash entries not from our hash date
+			matchScore = HashTable[i].Depth;
+		}
+		else
+		{
+			// Otherwise, choose the hash entry with the lowest depth for overwriting
+			matchScore = 256 + HashTable[i].Depth;
+		}
+
+		if (score < bestScore)
+		{
+			bestScore = score;
+			best = i;
+		}
+	}
+
+	HashTable[best].Lock = lock;
+	HashTable[best].Move = move;
+	HashTable[best].Score = score;
+	HashTable[best].Depth = depth;
+
+	ASSERT(flags <= 0xf);
+	ASSERT(HashDate <= 0xf);
+
+	HashTable[best].Extra = flags | (HashDate << 4);
+}

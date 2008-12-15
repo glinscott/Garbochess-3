@@ -3,6 +3,7 @@
 #include "movegen.h"
 #include "search.h"
 #include "evaluation.h"
+#include "hashtable.h"
 
 #include <cstdlib>
 
@@ -220,11 +221,24 @@ void StableSortMoves(Move *moves, int *moveScores, int moveCount)
 	}
 }
 
+enum MoveGenerationState
+{
+	MoveGenerationState_Hash,
+	MoveGenerationState_GenerateWinningEqualCaptures,
+	MoveGenerationState_WinningEqualCaptures,
+	MoveGenerationState_Killer1,
+	MoveGenerationState_Killer2,
+	MoveGenerationState_GenerateQuietMoves,
+	MoveGenerationState_QuietMoves,
+	MoveGenerationState_GenerateLosingCaptures,
+	MoveGenerationState_LosingCaptures
+};
+
 template<int maxMoves>
 class MoveSorter
 {
 public:
-	MoveSorter()
+	MoveSorter(const Position &position) : position(position)
 	{
 	}
 
@@ -233,7 +247,12 @@ public:
 		return moveCount;
 	}
 
-	inline void GenerateQCapture(const Position &position)
+	inline MoveGenerationState GetMoveGenerationState() const
+	{
+		return state;
+	}
+
+	inline void GenerateCaptures()
 	{
 		at = 0;
 		moveCount = GenerateCaptureMoves(position, moves);
@@ -248,7 +267,7 @@ public:
 		}
 	}
 
-	inline void GenerateCheckEscape(const Position &position)
+	inline void GenerateCheckEscape()
 	{
 		at = 0;
 		moveCount = GenerateCheckEscapeMoves(position, moves);
@@ -256,18 +275,17 @@ public:
 
 		for (int i = 0; i < moveCount; i++)
 		{
-			const PieceType fromPiece = GetPieceType(position.Board[GetFrom(moves[i])]);
 			const PieceType toPiece = GetPieceType(position.Board[GetTo(moves[i])]);
 
 			moveScores[i] = toPiece != PIECE_NONE ? 
 				// Sort captures first
-				ScoreCaptureMove(moves[i], fromPiece, toPiece) :
+				ScoreCaptureMove(moves[i], GetPieceType(position.Board[GetFrom(moves[i])]), toPiece) :
 				// Score non-captures as equal
 				0;
 		}
 	}
 
-	inline void GenerateChecks(const Position &position)
+	inline void GenerateChecks()
 	{
 		at = 0;
 		moveCount = GenerateCheckingMoves(position, moves);
@@ -275,14 +293,21 @@ public:
 
 		for (int i = 0; i < moveCount; i++)
 		{
-			const PieceType fromPiece = GetPieceType(position.Board[GetFrom(moves[i])]);
-			const PieceType toPiece = GetPieceType(position.Board[GetTo(moves[i])]);
-
 			moveScores[i] = 0;
 		}
 	}
 
-	inline Move NextMove()
+	inline void InitializeNormalMoves(const Move hashMove, const Move killer1, const Move killer2)
+	{
+		at = 0;
+		state = hashMove == 0 ? MoveGenerationState_GenerateWinningEqualCaptures : MoveGenerationState_Hash;
+
+		this->hashMove = hashMove;
+		this->killer1 = killer1;
+		this->killer2 = killer2;
+	}
+
+	inline Move PickBestMove()
 	{
 		// We use a trick here instead of checking for at == moveCount.
 		// The move initialization code stores a sentinel move at the end of the movelist.
@@ -309,6 +334,108 @@ public:
 		ASSERT((at + 1 >= moveCount) || (moveScores[at] >= moveScores[at + 1]));
 
 		return moves[at++];
+	}
+
+	inline Move NextQMove()
+	{
+		return PickBestMove();
+	}
+
+	inline Move NextNormalMove()
+	{
+		ASSERT(state >= MoveGenerationState_Hash && state <= MoveGenerationState_LosingCaptures);
+
+		switch (state)
+		{
+		case MoveGenerationState_Hash:
+			if (IsMovePseudoLegal(position, hashMove))
+			{
+				state = MoveGenerationState_GenerateWinningEqualCaptures;
+				return hashMove;
+			}
+
+			// Intentional fall-through
+
+		case MoveGenerationState_GenerateWinningEqualCaptures:
+			GenerateCaptures();
+			losingCapturesCount = 0;
+
+			// Intentional fall-through
+
+		case MoveGenerationState_WinningEqualCaptures:
+			while (at < moveCount)
+			{
+				const Move bestMove = PickBestMove();
+				ASSERT(bestMove != 0);
+
+				// Losing captures go off to the back of the list, winning/equal get returned.  They will
+				// have been scored correctly already.
+				if (FastSee(position, bestMove))
+				{
+					return bestMove;
+				}
+				else
+				{
+					losingCaptures[losingCapturesCount++] = bestMove;
+				}
+			}
+
+			// Intentional fall-through
+
+		case MoveGenerationState_Killer1:
+			if (IsMovePseudoLegal(position, killer1))
+			{
+				state = MoveGenerationState_Killer2;
+				return killer1;
+			}
+
+			// Intentional fall-through
+
+		case MoveGenerationState_Killer2:
+			if (IsMovePseudoLegal(position, killer2))
+			{
+				state = MoveGenerationState_GenerateQuietMoves;
+				return killer2;
+			}
+			
+			// Intentional fall-through
+
+		case MoveGenerationState_GenerateQuietMoves:
+			state = MoveGenerationState_QuietMoves;
+			moveCount = GenerateQuietMoves(position, moves);
+			at = 0;
+
+			for (int i = 0; i < moveCount; i++)
+			{
+				// TODO: history?
+				moveScores[i] = 0;
+			}
+
+			// Intentional fall-through
+
+		case MoveGenerationState_QuietMoves:
+			while (at < moveCount)
+			{
+				return PickBestMove();
+			}
+
+			// Intentional fall-through
+
+		case MoveGenerationState_GenerateLosingCaptures:
+			at = 0;
+			state = MoveGenerationState_LosingCaptures;
+
+			// Intentional fall-through
+
+		case MoveGenerationState_LosingCaptures:
+			while (at < losingCapturesCount)
+			{
+				return losingCaptures[at++];
+			}
+			break;
+		}
+
+		return 0;
 	}
 
 private:
@@ -353,7 +480,14 @@ private:
 	Move moves[maxMoves];
 	int moveScores[maxMoves];
 	int moveCount;
+
+	Move losingCaptures[32];
+	int losingCapturesCount;
+
 	int at;
+	const Position &position;
+	MoveGenerationState state;
+	Move hashMove, killer1, killer2;
 };
 
 struct SearchInfo
@@ -399,11 +533,11 @@ int QSearch(Position &position, int alpha, const int beta, const int depth)
 		// TODO: Don't even try captures that won't make it back up to alpha?
 	}
 	
-	MoveSorter<64> moves;
-	moves.GenerateQCapture(position);
+	MoveSorter<64> moves(position);
+	moves.GenerateCaptures();
 
 	Move move;
-	while ((move = moves.NextMove()) != 0)
+	while ((move = moves.NextQMove()) != 0)
 	{
 		if (!FastSee(position, move))
 		{
@@ -456,9 +590,9 @@ int QSearch(Position &position, int alpha, const int beta, const int depth)
 		return eval;
 	}
 
-	moves.GenerateChecks(position);
+	moves.GenerateChecks();
 
-	while ((move = moves.NextMove()) != 0)
+	while ((move = moves.NextQMove()) != 0)
 	{
 		if (!FastSee(position, move))
 		{
@@ -508,8 +642,8 @@ int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 		return DrawScore;
 	}
 
-	MoveSorter<64> moves;
-	moves.GenerateCheckEscape(position);
+	MoveSorter<64> moves(position);
+	moves.GenerateCheckEscape();
 
 	if (moves.GetMoveCount() == 0)
 	{
@@ -523,7 +657,7 @@ int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 	const int depthReduction = moves.GetMoveCount() == 1 ? 1 : OnePly;
 
 	Move move;
-	while ((move = moves.NextMove()) != 0)
+	while ((move = moves.NextQMove()) != 0)
 	{
 		MoveUndo moveUndo;
 		position.MakeMove(move, moveUndo);
@@ -559,7 +693,80 @@ int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 	return bestScore;
 }
 
-int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, int beta, int depth)
+int SearchCheck(Position &position, SearchInfo &searchInfo, const int beta, const int depth)
+{
+	ASSERT(position.IsInCheck());
+
+	if (position.IsDraw())
+	{
+		return DrawScore;
+	}
+
+	// TODO: Lookup hash/store hash once we use it
+	return 0;
+}
+
+int Search(Position &position, SearchInfo &searchInfo, const int beta, const int depth)
+{
+	if (position.IsDraw())
+	{
+		return DrawScore;
+	}
+
+	HashEntry *hashEntry;
+	Move hashMove;
+	if (ProbeHash(position.Hash, hashEntry))
+	{
+		if (hashEntry->Depth >= depth)
+		{
+			const int hashFlags = hashEntry->GetHashFlags();
+			if (hashFlags == HashFlagsExact)
+			{
+				return hashEntry->Score;
+			}
+			else if (hashEntry->Score >= beta && hashFlags == HashFlagsBeta)
+			{
+				return hashEntry->Score;
+			}
+			else if (hashEntry->Score < beta && hashFlags == HashFlagsAlpha)
+			{
+				return hashEntry->Score;
+			}
+		}
+
+		hashMove = hashEntry->Move;
+	}
+	else
+	{
+		hashMove = 0;
+	}
+	
+	// TODO: Null-move
+
+	MoveSorter<256> moves(position);
+	moves.InitializeNormalMoves(hashMove, searchInfo.Killers[depth][0], searchInfo.Killers[depth][1]);
+	
+	Move move;
+	while ((move = moves.NextNormalMove()) != 0)
+	{
+		MoveUndo moveUndo;
+		position.MakeMove(move, moveUndo);
+
+		if (!position.CanCaptureKing())
+		{
+			// Search move ...
+			position.UnmakeMove(move, moveUndo);
+		}
+		else
+		{
+			position.UnmakeMove(move, moveUndo);
+		}
+	}
+
+	return 0;
+}
+
+int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int beta, const int depth)
 {
 	return 0;
 }

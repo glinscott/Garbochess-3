@@ -3,6 +3,7 @@
 #include "movegen.h"
 #include "evaluation.h"
 #include "search.h"
+#include "hashtable.h"
 
 #include <cstdio>
 #include <vector>
@@ -178,6 +179,61 @@ void DrawTests()
 	}
 
 	// TODO: maybe a few more tests here?
+}
+
+void HashTests()
+{
+	Position position;
+	position.Initialize("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+	
+	Move move[10];
+	MoveUndo moveUndo[10];
+	
+	move[0] = MakeMoveFromUciString("g1f3");
+	move[1] = MakeMoveFromUciString("g8f6");
+	move[2] = MakeMoveFromUciString("f3g1");
+	move[3] = MakeMoveFromUciString("f6g8");
+
+	InitializeHash(16384);
+
+	ASSERT(HashTable != 0);
+	ASSERT(HashMask == (0x3ff & ~3));
+
+	const Move testMove = GenerateMove(1, 1);
+	const int testDepth = 5;
+	const int testScore = 500;
+	const int testFlags = HashFlagsBeta;
+	for (int i = 0; i < 4; i++)
+	{
+		StoreHash(position.Hash, testScore + i, testMove + i, testDepth + i, (testFlags + i) & HashFlagsMask);
+
+		HashEntry *result;
+		bool foundHash = ProbeHash(position.Hash, result);
+		ASSERT(foundHash);
+		ASSERT(result->Score == testScore + i);
+		ASSERT(result->Move == testMove + i);
+		ASSERT(result->Depth == testDepth + i);
+		ASSERT(result->GetHashFlags() == ((testFlags + i) & HashFlagsMask));
+		ASSERT(result->GetHashDate() == HashDate);
+
+		position.MakeMove(move[i], moveUndo[i]);
+	}
+
+	for (int i = 3; i >= 0; i--)
+	{
+		position.UnmakeMove(move[i], moveUndo[i]);
+
+		HashEntry *result;
+		bool foundHash = ProbeHash(position.Hash, result);
+		ASSERT(foundHash);
+		ASSERT(result->Score == testScore + i);
+		ASSERT(result->Move == testMove + i);
+		ASSERT(result->Depth == testDepth + i);
+		ASSERT(result->GetHashFlags() == ((testFlags + i) & HashFlagsMask));
+		ASSERT(result->GetHashDate() == HashDate);
+	}
+
+	// TODO: test hash aging
 }
 
 u64 perft(Position &position, int depth)
@@ -360,6 +416,7 @@ void RunTests()
 	UnitTests();
 	SeeTests();
 	DrawTests();
+	HashTests();
 
 /*	Position position;
 	position.Initialize("8/Pk6/8/8/8/8/6Kp/8 w - -");

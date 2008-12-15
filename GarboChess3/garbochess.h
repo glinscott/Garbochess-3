@@ -11,6 +11,9 @@ void __declspec(dllimport) __stdcall DebugBreak(void);
 #define ASSERT(a)
 #endif
 
+typedef signed char s8;
+typedef unsigned char u8;
+
 typedef signed short s16;
 typedef unsigned short u16;
 
