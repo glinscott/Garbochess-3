@@ -858,7 +858,10 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 		}
 	}
 
+	const int originalAlpha = alpha;
 	int bestScore = MoveSentinelScore;
+	hashMove = 0;
+
 	Move move;
 	while ((move = moves.NextNormalMove()) != 0)
 	{
@@ -899,6 +902,7 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 			if (value > bestScore)
 			{
 				bestScore = value;
+				hashMove = move;
 
 				if (value > alpha)
 				{
@@ -907,7 +911,7 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 					if (value >= beta)
 					{
 						// TODO: update history
-						// TODO: store hash
+						StoreHash(position.Hash, value, move, depth, HashFlagsBeta);
 						return value;
 					}
 				}
@@ -919,7 +923,7 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 		}
 	}
 
-	// TODO: store hash
+	StoreHash(position.Hash, bestScore, hashMove, depth, bestScore > originalAlpha ? HashFlagsExact : HashFlagsAlpha);
 
 	return bestScore;
 }
