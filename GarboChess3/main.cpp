@@ -320,12 +320,15 @@ int main()
 
 	InitializeHash(16000000);
 
-/*	Position position;
-	position.Initialize("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-	Move move = IterativeDeepening(position, 12);
-	printf("%s\n", GetMoveSAN(position, move).c_str());*/
+	/*
+	Position position;
+	position.Initialize("4k3/8/8/8/8/8/4P3/4K3 w - -");
+	int score;
+	Move move = IterativeDeepening(position, 35, score);
+	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);
+	*/
 
-	TestSuite(5);
+	TestSuite(7);
 
 	return 0;
 }

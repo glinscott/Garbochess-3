@@ -741,6 +741,8 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 	
 	if (!inCheck)
 	{
+		// TODO: null move should not happen in endgame situations...  low material being the main one.
+
 		// Attempt to null-move
 		MoveUndo moveUndo;
 		position.MakeNullMove(moveUndo);
@@ -753,6 +755,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		}
 		else
 		{
+			// TODO: we should not allow recursive null-moves.
 			score = -Search(position, searchInfo, 1 - beta, newDepth, false);
 		}
 
@@ -826,6 +829,13 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		{
 			position.UnmakeMove(move, moveUndo);
 		}
+	}
+
+	if (bestScore == MoveSentinelScore)
+	{
+		ASSERT(!inCheck);
+		// Stalemate
+		return DrawScore;
 	}
 
 	// TODO: some sort of history update here?
@@ -947,6 +957,13 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 		{
 			position.UnmakeMove(move, moveUndo);
 		}
+	}
+
+	if (bestScore == MoveSentinelScore)
+	{
+		ASSERT(!inCheck);
+		// Stalemate
+		return DrawScore;
 	}
 
 	StoreHash(position.Hash, bestScore, hashMove, depth, bestScore > originalAlpha ? HashFlagsExact : HashFlagsAlpha);

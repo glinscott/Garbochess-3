@@ -9,44 +9,29 @@ WAC results:
 2 ply - 206/300
 3 ply - 245/300
 4 ply - 261/300
+5 ply - 266/300 (w/ null move)
+6 ply - 278/300 (w/ null move)
 
-1. Rb8 -> expected Rxb2
-17. Kf1 -> expected Rh8
-21. Qh5 -> expected Ba2
-40. Rf8+ -> expected Ka5
-70. Qf3 -> expected Nxa7+
-79. Be5 -> expected Ra1
-85. c5 -> expected Ng4+
+1. c3 -> expected Rxb2
+85. Kc7 -> expected Ng4+
 86. cxb4 -> expected Rxe5
-90. Qd7 -> expected Be6
 91. h6 -> expected Bxg4
 99. Kb3 -> expected b6+
-129. Rh6 -> expected Qh6
 140. Kf1 -> expected Qxf4
-145. Bd3 -> expected Bc8
+145. Bh3 -> expected Bc8
 151. Nd5 -> expected Ne4
-154. Qc8 -> expected d6
 162. cxd5 -> expected Qg2+
-177. Qxh7+ -> expected Nxe6
-179. a5 -> expected Nxd5
-189. Bg4 -> expected Bh3
-195. Rb6 -> expected Nb4
-220. Nh5 -> expected Rd8+
+198. R1d1 -> expected Bxc6
 221. bxa3 -> expected Bf6
-222. Be5 -> expected Nxe4
-228. Kd5 -> expected Rxh4
+228. Ke5 -> expected Rxh4
 229. Rf7 -> expected Rb4
 234. Qe4 -> expected Qxf7+
-242. Nc4 -> expected Qe2
 246. Qc5+ -> expected Rxb5
-263. Qe5 -> expected Rab8
+250. Rb7 -> expected Qe5
+261. Re6 -> expected Rh6
+263. R8b8 -> expected Rab8
 264. Qxe4 -> expected exf6
 268. O-O -> expected axb4
 269. Rxe8+ -> expected Qg4
 273. Rg5+ -> expected Rb6
-274. Qg6 -> expected Nxg2
-279. Qxe2 -> expected Bxa3
-290. Kh1 -> expected h3
-292. Qf4 -> expected Nfg5
-296. Qg5 -> expected Bxg2
-Passed: 261/300
+Passed: 278/300

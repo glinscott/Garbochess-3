@@ -56,11 +56,18 @@ void UnitTests()
 	// TODO: unit test square utility functions
 	// TODO: unit test Position::GetAttacksTo and Position::GetPinnedPieces
 
+	// Regression test for pawn moves that don't cause revealed check
 	Move moves[256];
 	Position position;
 	position.Initialize("r1bq1B1r/p1pp1p1p/1pn1p3/4P3/2Pb3k/6R1/P3BPPP/3K2NR w - - 0 2");
 	int moveCount = GenerateCheckingMoves(position, moves);
-	ASSERT(moveCount == 4); // Regression test for pawn moves that don't cause revealed check
+	ASSERT(moveCount == 4);
+
+	// Regression test for search not detecting stalemates
+	position.Initialize("1k6/5RP1/1P6/1K6/6r1/8/8/8 w - - 0 1");
+	int score;
+	Move move = IterativeDeepening(position, 1, score);
+	ASSERT(score > 100 && score < 10000);
 }
 
 Move MakeMoveFromUciString(const std::string &moveString)
@@ -199,8 +206,6 @@ void HashTests()
 	move[1] = MakeMoveFromUciString("g8f6");
 	move[2] = MakeMoveFromUciString("f3g1");
 	move[3] = MakeMoveFromUciString("f6g8");
-
-	InitializeHash(16384);
 
 	ASSERT(HashTable != 0);
 	ASSERT(HashMask == (0x3ff & ~3));
@@ -419,6 +424,8 @@ void RunPerftSuite(int depthToVerify)
 
 void RunTests()
 {
+	InitializeHash(16384);
+
 	UnitTests();
 	SeeTests();
 	DrawTests();
