@@ -55,6 +55,11 @@ void UnitTests()
 	// TODO: unit test move utility functions
 	// TODO: unit test square utility functions
 	// TODO: unit test Position::GetAttacksTo and Position::GetPinnedPieces
+
+	Move moves[256];
+	Position position;
+	position.Initialize("r1bq1B1r/p1pp1p1p/1pn1p3/4P3/2Pb3k/6R1/P3BPPP/3K2NR w - - 0 2");
+	ASSERT(GenerateCheckingMoves(position, moves) == 4); // Regression test for pawn moves that don't cause revealed check
 }
 
 Move MakeMoveFromUciString(const std::string &moveString)
