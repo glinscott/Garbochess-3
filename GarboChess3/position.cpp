@@ -525,6 +525,53 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 #endif
 }
 
+void Position::MakeNullMove(MoveUndo &moveUndo)
+{
+	ASSERT(!IsInCheck());
+
+	moveUndo.EnPassent = EnPassent;
+
+	DrawKeys[MoveDepth++] = Hash;
+	ASSERT(MoveDepth < 256);
+
+	Fifty++;
+
+	if (EnPassent != -1)
+	{
+		Hash ^= Position::ZobristEP[EnPassent];
+		EnPassent = -1;
+	}
+
+	Hash ^= Position::ZobristToMove;
+	ToMove = FlipColor(ToMove);
+
+#if _DEBUG
+	VerifyBoard();
+#endif
+}
+
+void Position::UnmakeNullMove(MoveUndo &moveUndo)
+{
+	ASSERT(!IsInCheck());
+
+	MoveDepth--;
+	Fifty--;
+
+	EnPassent = moveUndo.EnPassent;
+
+	if (EnPassent != -1)
+	{
+		Hash ^= Position::ZobristEP[EnPassent];
+	}
+
+	Hash ^= Position::ZobristToMove;
+	ToMove = FlipColor(ToMove);
+
+#if _DEBUG
+	VerifyBoard();
+#endif
+}
+
 bool Position::IsSquareAttacked(const Square square, const Color them, const Bitboard allPieces) const
 {
 	if ((GetPawnAttacks(square, FlipColor(them)) & Pieces[PAWN] & Colors[them]) ||

@@ -38,6 +38,9 @@ public:
 	void MakeMove(const Move move, MoveUndo &moveUndo);
 	void UnmakeMove(const Move move, const MoveUndo &moveUndo);
 
+	void MakeNullMove(MoveUndo &moveUndo);
+	void UnmakeNullMove(MoveUndo &moveUndo);
+
 	inline bool IsSquareAttacked(const Square square, const Color them) const { return IsSquareAttacked(square, them, GetAllPieces()); }
 	bool IsSquareAttacked(const Square square, const Color them, const Bitboard allPieces) const;
 

@@ -739,7 +739,31 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		hashMove = 0;
 	}
 	
-	// TODO: Null-move!
+	if (!inCheck)
+	{
+		// Attempt to null-move
+		MoveUndo moveUndo;
+		position.MakeNullMove(moveUndo);
+
+		const int newDepth = depth - (4 * OnePly);
+		int score;
+		if (newDepth <= 0)
+		{
+			score = -QSearch(position, -beta, 1 - beta, 0);
+		}
+		else
+		{
+			score = -Search(position, searchInfo, 1 - beta, newDepth, false);
+		}
+
+		position.UnmakeNullMove(moveUndo);
+
+		if (score >= beta)
+		{
+			// TODO: store null move cutoffs in hash table?
+			return score;
+		}
+	}
 
 	MoveSorter<256> moves(position);
 	bool singular = false;
@@ -836,6 +860,8 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 	{
 		hashMove = 0;
 	}
+
+	// TODO: iid if no hashMove!
 
 	// TODO: use root move sorting in PV positions?
 	MoveSorter<256> moves(position);

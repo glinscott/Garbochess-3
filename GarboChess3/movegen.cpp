@@ -542,7 +542,7 @@ int GenerateCheckingMoves(const Position &position, Move *moves)
 							break;
 						}
 						revealedMoves = GetPawnMoves(to, us) & emptySquares;
-						if (revealedMoves && row == RANK_2 || row == RANK_7)
+						if (revealedMoves && (row == RANK_2 || row == RANK_7))
 						{
 							// Double pawn push
 							revealedMoves |= GetPawnMoves(MakeSquare(row == RANK_2 ? RANK_3 : RANK_6, GetColumn(to)), us) & emptySquares;
