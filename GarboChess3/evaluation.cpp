@@ -8,12 +8,6 @@ EVAL_FEATURE(BishopPhaseScale, 1);
 EVAL_FEATURE(RookPhaseScale, 2);
 EVAL_FEATURE(QueenPhaseScale, 4);
 
-template<class T>
-const T& min(const T &a, const T &b) { return a < b ? a : b; }
-
-template<class T>
-const T& max(const T &a, const T &b) { return a > b ? a : b; }
-
 int Evaluate(const Position &position)
 {
 	// TODO: Lazy evaluation?

@@ -10,3 +10,9 @@ extern int PsqTableEndgame[16][64];
 void InitializePsqTable();
 
 int Evaluate(const Position &position);
+
+template<class T>
+inline const T& min(const T &a, const T &b) { return a < b ? a : b; }
+
+template<class T>
+inline const T& max(const T &a, const T &b) { return a > b ? a : b; }

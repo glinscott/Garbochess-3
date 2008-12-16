@@ -25,7 +25,9 @@ void InitializeHash(int hashSize)
 	{
 		free(HashTable);
 	}
-	HashTable = (HashEntry*)malloc((size_t)(HashMask * sizeof(HashEntry)));
+	size_t allocSize = (size_t)(HashMask * sizeof(HashEntry));
+	HashTable = (HashEntry*)malloc(allocSize);
+	memset(HashTable, 0, allocSize);
 
 	// Minor speed optimization, so we don't need to mask this out when we access the hash-table
 	HashMask &= ~3;
@@ -159,10 +161,16 @@ std::string GetMoveSAN(Position &position, const Move move)
 	return result;
 }
 
-int SuperBasicQsearchTest(Position &position, int alpha, int beta, Move &bestMove, int depth)
+int AlphaBetaTest(Position &position, int alpha, int beta, Move &bestMove, int depth)
 {
+	if (position.IsDraw())
+	{
+		return 0;
+	}
+
 	Move moves[256];
 	int moveCount = GenerateLegalMoves(position, moves);
+	bool wasInCheck = position.IsInCheck();
 
 	bestMove = 0;
 	int bestScore = MinEval;
@@ -173,7 +181,8 @@ int SuperBasicQsearchTest(Position &position, int alpha, int beta, Move &bestMov
 		position.MakeMove(moves[i], moveUndo);
 
 		int score;
-		if (depth == 0)
+		int newDepth = (position.IsInCheck() || (wasInCheck && moveCount == 1)) ? depth : depth - 1;
+		if (newDepth <= 0)
 		{
 			if (position.IsInCheck())
 			{
@@ -187,7 +196,7 @@ int SuperBasicQsearchTest(Position &position, int alpha, int beta, Move &bestMov
 		else
 		{
 			Move tmp;
-			score = -SuperBasicQsearchTest(position, -beta, -alpha, tmp, depth - (position.IsInCheck() ? 0 : 1));
+			score = -AlphaBetaTest(position, -beta, -alpha, tmp, newDepth);
 		}
 		position.UnmakeMove(moves[i], moveUndo);
 
@@ -248,8 +257,21 @@ void TestSuite(int depth)
 
 				std::vector<std::string> moves = tokenize(fen, " ;");
 				Move bestMove;
-				int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, depth);
+//				int score = AlphaBetaTest(position, MinEval, MaxEval, bestMove, depth);
+
+				int iterScore;
+				Move iterMove = IterativeDeepening(position, depth, iterScore);
+				bestMove = iterMove;
+
 				std::string bestMoveString = GetMoveSAN(position, bestMove);
+/*				if (iterScore != score)
+				{
+					printf("score bad! %d. %s, %s\n", test, bestMoveString.c_str(), GetMoveSAN(position, iterMove).c_str());
+				}
+				else if (iterMove != bestMove)
+				{
+					printf("%d. %s, %s\n", test, bestMoveString.c_str(), GetMoveSAN(position, iterMove).c_str());
+				}*/
 
 				bool match = false;
 				for (int j = 0; j < (int)moves.size(); j++)
@@ -279,8 +301,6 @@ void TestSuite(int depth)
 
 	u64 totalTime = GetCurrentMilliseconds() - startTime;
 	printf("Passed: %d/%d\n", passed, test);
-//	printf("Seconds taken: %.2lf\n", totalTime / 1000.0);
-//	printf("NPS: %.2lf\n", (totalCount / (totalTime / 1000.0)));
 
 	fclose(file);
 }
@@ -295,17 +315,17 @@ int main()
 	Position::StaticInitialize();
 	InitializePsqTable();
 	InitializeSearch();
-	InitializeHash(16000000);
 
 	RunTests();
 
-	TestSuite(2);
+	InitializeHash(16000000);
 
-	Position position;
-	position.Initialize("r1b2rk1/ppbn1ppp/4p3/1QP4q/3P4/N4N2/5PPP/R1B2RK1 w - - 0 1");
-	Move bestMove;
-	int score = SuperBasicQsearchTest(position, MinEval, MaxEval, bestMove, 2);
-	printf("%s,%d\n", GetMoveSAN(position, bestMove).c_str(),score);
+/*	Position position;
+	position.Initialize("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+	Move move = IterativeDeepening(position, 12);
+	printf("%s\n", GetMoveSAN(position, move).c_str());*/
+
+	TestSuite(5);
 
 	return 0;
 }

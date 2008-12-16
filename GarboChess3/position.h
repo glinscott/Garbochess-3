@@ -28,7 +28,6 @@ public:
 	Color ToMove;
 	Square EnPassent;
 	Piece Board[64];
-	u64 DrawKeys[100];
 
 	inline Bitboard GetAllPieces() const { return Colors[WHITE] | Colors[BLACK]; }
 	
@@ -50,13 +49,14 @@ public:
 
 	inline bool IsDraw() const
 	{
-		if (Fifty >= 50)
+		if (Fifty >= 100)
 		{
 			return true;
 		}
 
 		// Check our previous positions.  If the hash key matches, it is a draw.
-		for (int i = Fifty - 4; i >= 0; i -= 2)
+		const int end = MoveDepth - Fifty;
+		for (int i = MoveDepth - 4; i >= end; i -= 2)
 		{
 			if (DrawKeys[i] == Hash)
 			{
@@ -67,6 +67,9 @@ public:
 	}
 
 private:
+	int MoveDepth;		// used for tracking repitition draws
+	u64 DrawKeys[256];
+
 	void VerifyBoard() const;
 	u64 GetHash() const;
 	u64 GetPawnHash() const;

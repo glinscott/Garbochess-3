@@ -363,6 +363,8 @@ public:
 			GenerateCaptures();
 			losingCapturesCount = 0;
 
+			state = MoveGenerationState_WinningEqualCaptures;
+
 			// Intentional fall-through
 
 		case MoveGenerationState_WinningEqualCaptures:
@@ -404,7 +406,6 @@ public:
 			// Intentional fall-through
 
 		case MoveGenerationState_GenerateQuietMoves:
-			state = MoveGenerationState_QuietMoves;
 			moveCount = GenerateQuietMoves(position, moves);
 			at = 0;
 
@@ -414,6 +415,7 @@ public:
 				moveScores[i] = 0;
 			}
 
+			state = MoveGenerationState_QuietMoves;
 			// Intentional fall-through
 
 		case MoveGenerationState_QuietMoves:
@@ -701,6 +703,9 @@ int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 
 int Search(Position &position, SearchInfo &searchInfo, const int beta, const int depth, const bool inCheck)
 {
+	ASSERT(depth > 0);
+	ASSERT(inCheck ? position.IsInCheck() : !position.IsInCheck());
+
 	if (position.IsDraw())
 	{
 		return DrawScore;
@@ -747,11 +752,11 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		moves.GenerateCheckEscape();
 		if (moves.GetMoveCount() == 0)
 		{
+			return MinEval;
 		}
 		else if (moves.GetMoveCount() == 1)
 		{
-			// TODO enable this once basic search testing is done
-			// singular = true;
+			singular = true;
 		}
 	}
 	
@@ -768,7 +773,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 			// Search move
 			const bool isChecking = position.IsInCheck();
-			const int newDepth = isChecking ? depth : depth - OnePly;
+			const int newDepth = (isChecking || singular) ? depth : depth - OnePly;
 
 			if (newDepth <= 0)
 			{
@@ -788,7 +793,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 				if (value >= beta)
 				{
 					// TODO: update history
-					// TODO: store hash
+					StoreHash(position.Hash, value, move, depth, HashFlagsBeta);
 					return value;
 				}
 			}
@@ -799,13 +804,20 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		}
 	}
 
+	// TODO: some sort of history update here?
+
+	StoreHash(position.Hash, bestScore, 0, depth, HashFlagsAlpha);
+
 	return bestScore;
 }
 
 int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int beta, const int depth, const bool inCheck)
 {
+	ASSERT(inCheck ? position.IsInCheck() : !position.IsInCheck());
+
 	if (depth <= 0)
 	{
+		ASSERT(!inCheck);
 		return QSearch(position, alpha, beta, 0);
 	}
 
@@ -819,6 +831,10 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 	if (ProbeHash(position.Hash, hashEntry))
 	{
 		hashMove = hashEntry->Move;
+	}
+	else
+	{
+		hashMove = 0;
 	}
 
 	// TODO: use root move sorting in PV positions?
@@ -838,8 +854,7 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 		}
 		else if (moves.GetMoveCount() == 1)
 		{
-			// TODO: re-enable this after basic search tree testing is done
-//			singular = true;
+			singular = true;
 		}
 	}
 
@@ -885,11 +900,16 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 			{
 				bestScore = value;
 
-				if (value >= beta)
+				if (value > alpha)
 				{
-					// TODO: update history
-					// TODO: store hash
-					return value;
+					alpha = value;
+
+					if (value >= beta)
+					{
+						// TODO: update history
+						// TODO: store hash
+						return value;
+					}
 				}
 			}
 		}
@@ -899,23 +919,25 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 		}
 	}
 
+	// TODO: store hash
+
 	return bestScore;
 }
 
 int SearchRoot(Position &position, Move *moves, int *moveScores, int moveCount, int alpha, const int beta, const int depth)
 {
+	ASSERT(depth % OnePly == 0);
+
 	int originalAlpha = alpha;
 	int bestScore = MoveSentinelScore;
 
-	// Now actually search the nodes
 	for (int i = 0; i < moveCount; i++)
 	{
-		// Search them
 		MoveUndo moveUndo;
 		position.MakeMove(moves[i], moveUndo);
 
 		const bool isChecking = position.IsInCheck();
-		const int newDepth = !isChecking ? depth : depth - OnePly;
+		const int newDepth = isChecking ? depth : depth - OnePly;
 		int value;
 		if (bestScore == MoveSentinelScore)
 		{
@@ -923,7 +945,16 @@ int SearchRoot(Position &position, Move *moves, int *moveScores, int moveCount, 
 		}
 		else
 		{
-			value = -Search(position, GetSearchInfo(0), -alpha, newDepth, isChecking);
+			if (newDepth <= 0)
+			{
+				value = -QSearch(position, -beta, -alpha, newDepth);
+			}
+			else
+			{
+				value = -Search(position, GetSearchInfo(0), -alpha, newDepth, isChecking);
+			}
+
+			// Research if value > alpha, as this means this node is a new PV node.
 			if (value > alpha)
 			{
 				value = -SearchPV(position, GetSearchInfo(0), -beta, -alpha, newDepth, isChecking);
@@ -945,23 +976,43 @@ int SearchRoot(Position &position, Move *moves, int *moveScores, int moveCount, 
 		{
 			moveScores[i] = value;
 		}
+
+		if (value > bestScore)
+		{
+			bestScore = value;
+			if (value > alpha)
+			{
+				alpha = value;
+				if (value >= beta)
+				{
+					return value;
+				}
+			}
+		}
 	}
 
 	return bestScore;
 }
 
-void IterativeDeepening(Position &position)
+Move IterativeDeepening(Position &position, const int maxDepth, int &score)
 {
 	Move moves[256];
 	int moveCount = GenerateLegalMoves(position, moves);
-
+ 
 	// Initial sorting of root moves is done by q-search scores
 	int moveScores[256];
 	for (int i = 0; i < moveCount; i++)
 	{
 		MoveUndo moveUndo;
 		position.MakeMove(moves[i], moveUndo);
-		moveScores[i] = -QSearch(position, MinEval, MaxEval, 0);
+		if (position.IsInCheck())
+		{
+			moveScores[i] = -QSearchCheck(position, MinEval, MaxEval, 0);
+		}
+		else
+		{
+			moveScores[i] = -QSearch(position, MinEval, MaxEval, 0);
+		}
 		position.UnmakeMove(moves[i], moveUndo);
 	}
 
@@ -970,7 +1021,7 @@ void IterativeDeepening(Position &position)
 	int alpha = MinEval, beta = MaxEval;
 
 	// Iterative deepening loop
-	for (int depth = 1; depth < 99; depth++)
+	for (int depth = 1; depth <= min(maxDepth, 99); depth++)
 	{
 		for (int i = 0; i < moveCount; i++)
 		{
@@ -978,12 +1029,14 @@ void IterativeDeepening(Position &position)
 			moveScores[i] = MinEval;
 		}
 
-		int value = SearchRoot(position, moves, moveScores, moveCount, alpha, beta, depth);
+		int value = SearchRoot(position, moves, moveScores, moveCount, alpha, beta, depth * OnePly);
 
 		StableSortMoves(moves, moveScores, moveCount);
 	}
 
 	// Best move is the first move in the list
+	score = moveScores[0];
+	return moves[0];
 }
 
 void InitializeSearch()

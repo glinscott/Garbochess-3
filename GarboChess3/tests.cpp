@@ -234,6 +234,7 @@ void HashTests()
 	}
 
 	// TODO: test hash aging
+	// TODO: test hash depth collisions
 }
 
 u64 perft(Position &position, int depth)
@@ -321,7 +322,6 @@ u64 perft(Position &position, int depth)
 		const bool verifyCheckEscape = false;
 		if (verifyCheckEscape)
 		{
-
 			Move vMoves[256];
 			int vCount = GenerateQuietMoves(position, vMoves);
 			vCount += GenerateCaptureMoves(position, vMoves + vCount);
@@ -422,5 +422,5 @@ void RunTests()
 	position.Initialize("8/Pk6/8/8/8/8/6Kp/8 w - -");
 	perft(position, 3);*/
 
-//	RunPerftSuite(4);
+//	RunPerftSuite(5);
 }

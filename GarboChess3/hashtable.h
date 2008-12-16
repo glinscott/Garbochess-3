@@ -33,7 +33,7 @@ void IncrementHashDate();
 inline bool ProbeHash(const u64 hash, HashEntry *&result)
 {
 	const u64 base = hash & HashMask;
-	ASSERT(base + 4 <= HashMask);
+	ASSERT(base <= HashMask);
 
 	const u32 lock = hash >> 32;
 	for (u64 i = base; i < base + 4; i++)
@@ -51,7 +51,7 @@ inline bool ProbeHash(const u64 hash, HashEntry *&result)
 inline void StoreHash(const u64 hash, const s16 score, const Move move, const int depth, const int flags)
 {
 	const u64 base = hash & HashMask;
-	ASSERT(base + 4 <= HashMask);
+	ASSERT(base <= HashMask);
 
 	const u32 lock = hash >> 32;
 	int bestScore = 512;
@@ -81,7 +81,7 @@ inline void StoreHash(const u64 hash, const s16 score, const Move move, const in
 			matchScore = 256 + HashTable[i].Depth;
 		}
 
-		if (score < bestScore)
+		if (matchScore < bestScore)
 		{
 			bestScore = score;
 			best = i;

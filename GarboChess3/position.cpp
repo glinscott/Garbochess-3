@@ -129,6 +129,8 @@ void Position::Initialize(const std::string &fen)
 		Fifty = 0;
 	}
 
+	MoveDepth = 0;
+
 	for (int i = 0; i < Fifty; i++)
 	{
 		DrawKeys[i] = 0;
@@ -227,7 +229,8 @@ void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 	moveUndo.Fifty = Fifty;
 	moveUndo.Captured = target;
 
-	DrawKeys[Fifty] = Hash;
+	DrawKeys[MoveDepth++] = Hash;
+	ASSERT(MoveDepth < 256);
 
 	if (EnPassent != -1)
 	{
@@ -421,6 +424,8 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 	EnPassent = moveUndo.EnPassent;
 	Fifty = moveUndo.Fifty;
 
+	MoveDepth--;
+
 	ToMove = us;
 
 	// Restore the piece to its original location
@@ -439,8 +444,6 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 
 		if (moveFlags == MoveTypeCastle)
 		{
-			Fifty = 0;
-
 			const int kingRow = GetRow(from);
 			ASSERT((us == WHITE && kingRow == RANK_1) || (us == BLACK && kingRow == RANK_8));
 
