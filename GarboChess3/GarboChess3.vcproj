@@ -397,6 +397,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\utilities.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\utilities.h"
+				>
+			</File>
+			<File
 				RelativePath=".\windows.cpp"
 				>
 			</File>

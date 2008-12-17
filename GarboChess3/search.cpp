@@ -16,8 +16,6 @@ void Swap(T& a, T &b)
 }
 
 const int MoveSentinelScore = MinEval - 1;
-const int MaxPly = 99;
-const int MaxThreads = 8;
 
 // TODO: make this use contempt?
 const int DrawScore = 0;
@@ -498,13 +496,10 @@ private:
 	Move hashMove, killer1, killer2;
 };
 
-struct SearchInfo
-{
-	int NodeCount;
-	int QNodeCount;
+// The time the search was begun at
+u64 SearchStartTime;
 
-	Move Killers[MaxPly][2];
-};
+bool KillSearch;
 
 const int SearchInfoPageSize = 4096;
 u64 searchInfoThreads;
@@ -516,9 +511,11 @@ SearchInfo &GetSearchInfo(int thread)
 
 // depth == 0 is normally what is called for q-search.
 // Checks are searched when depth >= -(OnePly / 2).  Depth is decreased by 1 for checks
-int QSearch(Position &position, int alpha, const int beta, const int depth)
+int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int beta, const int depth)
 {
 	ASSERT(!position.IsInCheck());
+
+	searchInfo.QNodeCount++;
 
 	if (position.IsDraw())
 	{
@@ -564,11 +561,11 @@ int QSearch(Position &position, int alpha, const int beta, const int depth)
 			// Search this move
 			if (position.IsInCheck())
 			{
-				value = -QSearchCheck(position, -beta, -alpha, depth - 1);
+				value = -QSearchCheck(position, searchInfo, -beta, -alpha, depth - 1);
 			}
 			else
 			{
-				value = -QSearch(position, -beta, -alpha, depth - OnePly);
+				value = -QSearch(position, searchInfo, -beta, -alpha, depth - OnePly);
 			}
 
 			position.UnmakeMove(move, moveUndo);
@@ -615,7 +612,7 @@ int QSearch(Position &position, int alpha, const int beta, const int depth)
 		{
 			ASSERT(position.IsInCheck());
 
-			int value = -QSearchCheck(position, -beta, -alpha, depth - 1);
+			int value = -QSearchCheck(position, searchInfo, -beta, -alpha, depth - 1);
 
 			position.UnmakeMove(move, moveUndo);
 			
@@ -641,9 +638,11 @@ int QSearch(Position &position, int alpha, const int beta, const int depth)
 	return eval;
 }
 
-int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
+int QSearchCheck(Position &position, SearchInfo &searchInfo, int alpha, const int beta, const int depth)
 {
 	ASSERT(position.IsInCheck());
+
+	searchInfo.QNodeCount++;
 
 	if (position.IsDraw())
 	{
@@ -675,11 +674,11 @@ int QSearchCheck(Position &position, int alpha, const int beta, const int depth)
 		int value;
 		if (position.IsInCheck())
 		{
-			value = -QSearchCheck(position, -beta, -alpha, depth - 1);
+			value = -QSearchCheck(position, searchInfo, -beta, -alpha, depth - 1);
 		}
 		else
 		{
-			value = -QSearch(position, -beta, -alpha, depth - depthReduction);
+			value = -QSearch(position, searchInfo, -beta, -alpha, depth - depthReduction);
 		}
 
 		position.UnmakeMove(move, moveUndo);
@@ -705,6 +704,8 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 {
 	ASSERT(depth > 0);
 	ASSERT(inCheck ? position.IsInCheck() : !position.IsInCheck());
+
+	searchInfo.NodeCount++;
 
 	if (position.IsDraw())
 	{
@@ -751,7 +752,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		int score;
 		if (newDepth <= 0)
 		{
-			score = -QSearch(position, -beta, 1 - beta, 0);
+			score = -QSearch(position, searchInfo, -beta, 1 - beta, 0);
 		}
 		else
 		{
@@ -804,7 +805,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 			if (newDepth <= 0)
 			{
-				 value = -QSearch(position, -beta, 1 - beta, 0);
+				 value = -QSearch(position, searchInfo, -beta, 1 - beta, 0);
 			}
 			else
 			{
@@ -816,6 +817,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 			if (value > bestScore)
 			{
 				bestScore = value;
+				hashMove = move;
 
 				if (value >= beta)
 				{
@@ -849,7 +851,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 	// TODO: some sort of history update here?
 
-	StoreHash(position.Hash, bestScore, 0, depth, HashFlagsAlpha);
+	StoreHash(position.Hash, bestScore, hashMove, depth, HashFlagsAlpha);
 
 	return bestScore;
 }
@@ -858,10 +860,13 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 {
 	ASSERT(inCheck ? position.IsInCheck() : !position.IsInCheck());
 
+	// TODO: should probably count PV nodes differently
+	searchInfo.NodeCount++;
+
 	if (depth <= 0)
 	{
 		ASSERT(!inCheck);
-		return QSearch(position, alpha, beta, 0);
+		return QSearch(position, searchInfo, alpha, beta, 0);
 	}
 
 	if (position.IsDraw())
@@ -895,6 +900,7 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 		moves.GenerateCheckEscape();
 		if (moves.GetMoveCount() == 0)
 		{
+			//TODO: Make checkmates return correct "depth"
 			return MinEval;
 		}
 		else if (moves.GetMoveCount() == 1)
@@ -905,7 +911,6 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 
 	const int originalAlpha = alpha;
 	int bestScore = MoveSentinelScore;
-	hashMove = 0;
 
 	Move move;
 	while ((move = moves.NextNormalMove()) != 0)
@@ -929,7 +934,7 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 			{
 				if (newDepth <= 0)
 				{
-					value = -QSearch(position, -beta, -alpha, 0);
+					value = -QSearch(position, searchInfo, -beta, -alpha, 0);
 				}
 				else
 				{
@@ -988,7 +993,7 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 	return bestScore;
 }
 
-int SearchRoot(Position &position, Move *moves, int *moveScores, int moveCount, int alpha, const int beta, const int depth)
+int SearchRoot(Position &position, SearchInfo &searchInfo, Move *moves, int *moveScores, int moveCount, int alpha, const int beta, const int depth)
 {
 	ASSERT(depth % OnePly == 0);
 
@@ -1005,23 +1010,23 @@ int SearchRoot(Position &position, Move *moves, int *moveScores, int moveCount, 
 		int value;
 		if (bestScore == MoveSentinelScore)
 		{
-			value = -SearchPV(position, GetSearchInfo(0), -beta, -alpha, newDepth, isChecking);
+			value = -SearchPV(position, searchInfo, -beta, -alpha, newDepth, isChecking);
 		}
 		else
 		{
 			if (newDepth <= 0)
 			{
-				value = -QSearch(position, -beta, -alpha, newDepth);
+				value = -QSearch(position, searchInfo, -beta, -alpha, newDepth);
 			}
 			else
 			{
-				value = -Search(position, GetSearchInfo(0), -alpha, newDepth, isChecking);
+				value = -Search(position, searchInfo, -alpha, newDepth, isChecking);
 			}
 
 			// Research if value > alpha, as this means this node is a new PV node.
 			if (value > alpha)
 			{
-				value = -SearchPV(position, GetSearchInfo(0), -beta, -alpha, newDepth, isChecking);
+				value = -SearchPV(position, searchInfo, -beta, -alpha, newDepth, isChecking);
 			}
 		}
 
@@ -1058,8 +1063,15 @@ int SearchRoot(Position &position, Move *moves, int *moveScores, int moveCount, 
 	return bestScore;
 }
 
-Move IterativeDeepening(Position &position, const int maxDepth, int &score)
+Move IterativeDeepening(Position &position, const int maxDepth, int &score, bool printSearchInfo)
 {
+	SearchStartTime = GetCurrentMilliseconds();
+
+	SearchInfo &searchInfo = GetSearchInfo(0);
+	searchInfo.NodeCount = 0;
+	searchInfo.QNodeCount = 0;
+	// TODO: try tricks with killers? - like moving them down two ply
+
 	Move moves[256];
 	int moveCount = GenerateLegalMoves(position, moves);
  
@@ -1071,11 +1083,11 @@ Move IterativeDeepening(Position &position, const int maxDepth, int &score)
 		position.MakeMove(moves[i], moveUndo);
 		if (position.IsInCheck())
 		{
-			moveScores[i] = -QSearchCheck(position, MinEval, MaxEval, 0);
+			moveScores[i] = -QSearchCheck(position, searchInfo, MinEval, MaxEval, -OnePly);
 		}
 		else
 		{
-			moveScores[i] = -QSearch(position, MinEval, MaxEval, 0);
+			moveScores[i] = -QSearch(position, searchInfo, MinEval, MaxEval, -OnePly);
 		}
 		position.UnmakeMove(moves[i], moveUndo);
 	}
@@ -1083,6 +1095,8 @@ Move IterativeDeepening(Position &position, const int maxDepth, int &score)
 	StableSortMoves(moves, moveScores, moveCount);
 
 	int alpha = MinEval, beta = MaxEval;
+	Move bestMove;
+	int bestScore;
 
 	// Iterative deepening loop
 	for (int depth = 1; depth <= min(maxDepth, 99); depth++)
@@ -1093,14 +1107,32 @@ Move IterativeDeepening(Position &position, const int maxDepth, int &score)
 			moveScores[i] = MinEval;
 		}
 
-		int value = SearchRoot(position, moves, moveScores, moveCount, alpha, beta, depth * OnePly);
+		int value = SearchRoot(position, searchInfo, moves, moveScores, moveCount, alpha, beta, depth * OnePly);
+
+		if (KillSearch)
+		{
+			break;
+		}
 
 		StableSortMoves(moves, moveScores, moveCount);
+
+		// Best move is the first move in the list
+		bestMove = moves[0];
+		bestScore = moveScores[0];
+
+		ASSERT(bestScore == value);
+
+		if (printSearchInfo)
+		{
+			const u64 nodeCount = searchInfo.NodeCount + searchInfo.QNodeCount;
+			const u64 msTaken = GetCurrentMilliseconds() - SearchStartTime;
+			const u64 nps = (nodeCount * 1000) / max(1ULL, msTaken);
+			printf("info depth %d score cp %d nodes %lld time %lld nps %lld pv %s\n", depth, (int)value, nodeCount, msTaken, nps, GetMoveSAN(position, moves[0]).c_str());
+		}
 	}
 
-	// Best move is the first move in the list
-	score = moveScores[0];
-	return moves[0];
+	score = bestScore;
+	return bestMove;
 }
 
 void InitializeSearch()

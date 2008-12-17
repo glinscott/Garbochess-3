@@ -4,6 +4,7 @@
 #include "evaluation.h"
 #include "search.h"
 #include "hashtable.h"
+#include "utilities.h"
 
 #include <cstdio>
 #include <vector>
@@ -66,29 +67,8 @@ void UnitTests()
 	// Regression test for search not detecting stalemates
 	position.Initialize("1k6/5RP1/1P6/1K6/6r1/8/8/8 w - - 0 1");
 	int score;
-	Move move = IterativeDeepening(position, 1, score);
+	Move move = IterativeDeepening(position, 1, score, false);
 	ASSERT(score > 100 && score < 10000);
-}
-
-Move MakeMoveFromUciString(const std::string &moveString)
-{
-	const Square from = MakeSquare(RANK_1 - (moveString[1] - '1'), moveString[0] - 'a');
-	const Square to = MakeSquare(RANK_1 - (moveString[3] - '1'), moveString[2] - 'a');
-
-	if (moveString.length() == 5)
-	{
-		int promotionType;
-		switch (tolower(moveString[4]))
-		{
-		case 'n': promotionType = PromotionTypeKnight; break;
-		case 'b': promotionType = PromotionTypeBishop; break;
-		case 'r': promotionType = PromotionTypeRook; break;
-		case 'q': promotionType = PromotionTypeQueen; break;
-		}
-		return GeneratePromotionMove(from, to, promotionType);
-	}
-
-	return GenerateMove(from, to);
 }
 
 void CheckSee(const std::string &fen, const std::string &move, bool expected)
@@ -422,6 +402,136 @@ void RunPerftSuite(int depthToVerify)
 	fclose(file);
 }
 
+int AlphaBetaTest(Position &position, int alpha, int beta, Move &bestMove, int depth)
+{
+	if (position.IsDraw())
+	{
+		return 0;
+	}
+
+	Move moves[256];
+	int moveCount = GenerateLegalMoves(position, moves);
+	bool wasInCheck = position.IsInCheck();
+
+	bestMove = 0;
+	int bestScore = MinEval;
+	for (int i = 0; i < moveCount; i++)
+	{
+//		const std::string fooString = GetMoveSAN(position, moves[i]);
+		MoveUndo moveUndo;
+		position.MakeMove(moves[i], moveUndo);
+
+		int score;
+		int newDepth = (position.IsInCheck() || (wasInCheck && moveCount == 1)) ? depth : depth - 1;
+		if (newDepth <= 0)
+		{
+			if (position.IsInCheck())
+			{
+				score = -QSearchCheck(position, GetSearchInfo(0), -beta, -alpha, 0);
+			}
+			else
+			{
+				score = -QSearch(position, GetSearchInfo(0), -beta, -alpha, 0);
+			}
+		}
+		else
+		{
+			Move tmp;
+			score = -AlphaBetaTest(position, -beta, -alpha, tmp, newDepth);
+		}
+		position.UnmakeMove(moves[i], moveUndo);
+
+/*		if (depth == 3)
+		std::printf("Searched %d.%s - > %d\n", i, fooString.c_str(), score);*/
+
+		if (score > bestScore || bestMove == 0)
+		{
+			bestMove = moves[i];
+			bestScore = score;
+			if (score > alpha)
+			{
+				alpha = score;
+				if (score >= beta)
+				{
+					return score;
+				}
+			}
+		}
+	}
+
+	return bestScore;
+}
+
+void TestSuite(int depth)
+{
+	std::FILE* file;
+	fopen_s(&file, "tests/wac.epd", "rt");
+
+	char line[500];
+	u64 startTime = GetCurrentMilliseconds();
+	int test = 0, passed = 0;
+	while (std::fgets(line, 500, file) != NULL)
+	{
+		Position position;
+		position.Initialize(line);
+
+		for (int i = 0; line[i] != 0; i++)
+		{
+			if (line[i] == 'b' && line[i + 1] == 'm')
+			{
+				std::string fen = line;
+				fen = fen.substr(i + 3);
+
+				std::vector<std::string> moves = tokenize(fen, " ;");
+				Move bestMove;
+//				int score = AlphaBetaTest(position, MinEval, MaxEval, bestMove, depth);
+
+				int iterScore;
+				Move iterMove = IterativeDeepening(position, depth, iterScore, false);
+				bestMove = iterMove;
+
+				std::string bestMoveString = GetMoveSAN(position, bestMove);
+/*				if (iterScore != score)
+				{
+					printf("score bad! %d. %s, %s\n", test, bestMoveString.c_str(), GetMoveSAN(position, iterMove).c_str());
+				}
+				else if (iterMove != bestMove)
+				{
+					printf("%d. %s, %s\n", test, bestMoveString.c_str(), GetMoveSAN(position, iterMove).c_str());
+				}*/
+
+				bool match = false;
+				for (int j = 0; j < (int)moves.size(); j++)
+				{
+					if (moves[j] == bestMoveString)
+					{
+						match = true;
+						break;
+					}
+				}
+				
+				if (!match)
+				{
+					std::printf("%d. %s -> expected %s\n", test, bestMoveString.c_str(), moves[0].c_str());
+				}
+				else
+				{
+					passed++;
+				}
+
+				test++;
+
+				break;
+			}
+		}
+	}
+
+	u64 totalTime = GetCurrentMilliseconds() - startTime;
+	printf("Passed: %d/%d\n", passed, test);
+
+	fclose(file);
+}
+
 void RunTests()
 {
 	InitializeHash(16384);
@@ -430,6 +540,16 @@ void RunTests()
 	SeeTests();
 	DrawTests();
 	HashTests();
+
+	InitializeHash(16000000);
+
+/*	Position position;
+	position.Initialize("r4rk1/1p2ppbp/p2pbnp1/q7/3BPPP1/2N2B2/PPP4P/R2Q1RK1 b - -");
+	int score;
+	Move move = IterativeDeepening(position, 9, score, true);
+	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);*/
+
+//	TestSuite(7);
 
 /*	Position position;
 	position.Initialize("8/Pk6/8/8/8/8/6Kp/8 w - -");
