@@ -820,7 +820,16 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 				if (value >= beta)
 				{
 					// TODO: update history
+
 					StoreHash(position.Hash, value, move, depth, HashFlagsBeta);
+
+					// Update killers
+					if (move != searchInfo.Killers[depth][0])
+					{
+						searchInfo.Killers[depth][1] = searchInfo.Killers[depth][0];
+						searchInfo.Killers[depth][0] = move;
+					}
+
 					return value;
 				}
 			}
@@ -948,6 +957,14 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 					{
 						// TODO: update history
 						StoreHash(position.Hash, value, move, depth, HashFlagsBeta);
+
+						// Update killers
+						if (move != searchInfo.Killers[depth][0])
+						{
+							searchInfo.Killers[depth][1] = searchInfo.Killers[depth][0];
+							searchInfo.Killers[depth][0] = move;
+						}
+
 						return value;
 					}
 				}

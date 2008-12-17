@@ -788,7 +788,8 @@ bool IsMovePseudoLegal(const Position &position, const Move move)
 				// empty, and we must be moving up two squares
 				const Square nextSquare = GetFirstBitIndex(GetPawnMoves(from, us));
 				if (position.Board[nextSquare] == PIECE_NONE &&
-					IsBitSet(GetPawnMoves(nextSquare, us), to))
+					IsBitSet(GetPawnMoves(nextSquare, us), to) &&
+					((us == WHITE && GetRow(from) == RANK_2) || (us == BLACK && GetRow(from) == RANK_7)))
 				{
 					return true;
 				}

@@ -322,9 +322,9 @@ int main()
 
 	/*
 	Position position;
-	position.Initialize("4k3/8/8/8/8/8/4P3/4K3 w - -");
+	position.Initialize("1R2r3/1KP1p1p1/pP1Pb1Pp/pB1PB1pn/nN2pqr1/P4pNk/P3P3/2b1QR2 w - - 0 1");
 	int score;
-	Move move = IterativeDeepening(position, 35, score);
+	Move move = IterativeDeepening(position, 0, score);
 	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);
 	*/
 
