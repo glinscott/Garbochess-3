@@ -366,6 +366,11 @@ public:
 				const Move bestMove = PickBestMove();
 				ASSERT(bestMove != 0);
 
+				if (bestMove == hashMove)
+				{
+					continue;
+				}
+
 				// Losing captures go off to the back of the list, winning/equal get returned.  They will
 				// have been scored correctly already.
 				if (FastSee(position, bestMove))
@@ -381,7 +386,7 @@ public:
 			// Intentional fall-through
 
 		case MoveGenerationState_Killer1:
-			if (IsMovePseudoLegal(position, killer1))
+			if (killer1 != hashMove && IsMovePseudoLegal(position, killer1))
 			{
 				state = MoveGenerationState_Killer2;
 				return killer1;
@@ -390,7 +395,7 @@ public:
 			// Intentional fall-through
 
 		case MoveGenerationState_Killer2:
-			if (IsMovePseudoLegal(position, killer2))
+			if (killer2 != hashMove && IsMovePseudoLegal(position, killer2))
 			{
 				state = MoveGenerationState_GenerateQuietMoves;
 				return killer2;
@@ -414,7 +419,12 @@ public:
 		case MoveGenerationState_QuietMoves:
 			while (at < moveCount)
 			{
-				return PickBestMove();
+				const Move bestMove = PickBestMove();
+				if (bestMove == hashMove || bestMove == killer1 || bestMove == killer2)
+				{
+					continue;
+				}
+				return bestMove;
 			}
 
 			// Intentional fall-through
@@ -428,7 +438,12 @@ public:
 		case MoveGenerationState_LosingCaptures:
 			while (at < losingCapturesCount)
 			{
-				return losingCaptures[at++];
+				const Move bestMove = losingCaptures[at++];
+				if (bestMove == hashMove)
+				{
+					continue;
+				}
+				return bestMove;
 			}
 			break;
 
@@ -701,6 +716,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 	if (!inCheck && depth >= 2 * OnePly && !(flags & 1))
 	{
 		// TODO: null move should not happen in endgame situations...  low material being the main one.
+		// TODO: don't try null-move unless eval >= beta?
 
 		// Attempt to null-move
 		MoveUndo moveUndo;
@@ -714,7 +730,6 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		}
 		else
 		{
-			// TODO: we should not allow recursive null-moves.
 			score = -Search(position, searchInfo, 1 - beta, newDepth, 1, false);
 		}
 
@@ -783,8 +798,9 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 					StoreHash(position.Hash, value, move, depth, HashFlagsBeta);
 
-					// Update killers
-					if (move != searchInfo.Killers[depth][0])
+					// Update killers (only for non-captures)
+					if (position.Board[GetTo(move)] == PIECE_NONE &&
+						move != searchInfo.Killers[depth][0])
 					{
 						searchInfo.Killers[depth][1] = searchInfo.Killers[depth][0];
 						searchInfo.Killers[depth][0] = move;
@@ -921,8 +937,9 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 						// TODO: update history
 						StoreHash(position.Hash, value, move, depth, HashFlagsBeta);
 
-						// Update killers
-						if (move != searchInfo.Killers[depth][0])
+						// Update killers (only for non-captures)
+						if (position.Board[GetTo(move)] == PIECE_NONE &&
+							move != searchInfo.Killers[depth][0])
 						{
 							searchInfo.Killers[depth][1] = searchInfo.Killers[depth][0];
 							searchInfo.Killers[depth][0] = move;
