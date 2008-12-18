@@ -203,7 +203,14 @@ int main()
 
 //	RunTests();
 
-	RunEngine();
+//	RunEngine();
+
+	printf("%d\n",sizeof(HashEntry));
+	Position position;
+	position.Initialize("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+	int score;
+	Move move = IterativeDeepening(position, 12, score, true);
+	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);
 
 	return 0;
 }

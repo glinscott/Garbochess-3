@@ -473,29 +473,32 @@ void Position::UnmakeMove(const Move move, const MoveUndo &moveUndo)
 			PsqEvalEndgame += PsqTableEndgame[Board[rookFrom]][rookFrom] - PsqTableEndgame[Board[rookFrom]][rookTo];
 		}
 	}
-	else if (moveFlags == MoveTypePromotion)
+	else if (moveFlags != MoveTypeNone)
 	{
-		const PieceType promotionType = GetPromotionMoveType(move);
+		if (moveFlags == MoveTypePromotion)
+		{
+			const PieceType promotionType = GetPromotionMoveType(move);
 
-		XorClearBit(Pieces[promotionType], from);
-		SetBit(Pieces[PAWN], from);
+			XorClearBit(Pieces[promotionType], from);
+			SetBit(Pieces[PAWN], from);
 
-		const Piece unpromotedPawn = MakePiece(us, PAWN);
-		Board[from] = unpromotedPawn;
+			const Piece unpromotedPawn = MakePiece(us, PAWN);
+			Board[from] = unpromotedPawn;
 
-		PsqEvalOpening += PsqTableOpening[unpromotedPawn][to] - PsqTableOpening[Board[to]][to];
-		PsqEvalEndgame += PsqTableEndgame[unpromotedPawn][to] - PsqTableEndgame[Board[to]][to];
-	}
-	else if (moveFlags == MoveTypeEnPassent)
-	{
-		const Square epSquare = (to - from < 0) ? to + 8 : to - 8;
+			PsqEvalOpening += PsqTableOpening[unpromotedPawn][to] - PsqTableOpening[Board[to]][to];
+			PsqEvalEndgame += PsqTableEndgame[unpromotedPawn][to] - PsqTableEndgame[Board[to]][to];
+		}
+		else if (moveFlags == MoveTypeEnPassent)
+		{
+			const Square epSquare = (to - from < 0) ? to + 8 : to - 8;
 
-		SetBit(Pieces[PAWN], epSquare);
-		SetBit(Colors[them], epSquare);
-		Board[epSquare] = MakePiece(them, PAWN);
+			SetBit(Pieces[PAWN], epSquare);
+			SetBit(Colors[them], epSquare);
+			Board[epSquare] = MakePiece(them, PAWN);
 
-		PsqEvalOpening += PsqTableOpening[Board[epSquare]][epSquare];
-		PsqEvalEndgame += PsqTableEndgame[Board[epSquare]][epSquare];
+			PsqEvalOpening += PsqTableOpening[Board[epSquare]][epSquare];
+			PsqEvalEndgame += PsqTableEndgame[Board[epSquare]][epSquare];
+		}
 	}
 
 	if (moveUndo.Captured != PIECE_NONE)
@@ -570,34 +573,6 @@ void Position::UnmakeNullMove(MoveUndo &moveUndo)
 #if _DEBUG
 	VerifyBoard();
 #endif
-}
-
-bool Position::IsSquareAttacked(const Square square, const Color them, const Bitboard allPieces) const
-{
-	if ((GetPawnAttacks(square, FlipColor(them)) & Pieces[PAWN] & Colors[them]) ||
-		(GetKnightAttacks(square) & Pieces[KNIGHT] & Colors[them]))
-	{
-		return true;
-	}
-
-	const Bitboard bishopQueen = Pieces[BISHOP] | Pieces[QUEEN];
-	if (GetBishopAttacks(square, allPieces) & bishopQueen & Colors[them])
-	{
-		return true;
-	}
-
-	const Bitboard rookQueen = Pieces[ROOK] | Pieces[QUEEN];
-	if (GetRookAttacks(square, allPieces) & rookQueen & Colors[them])
-	{
-		return true;
-	}
-
-	if (GetKingAttacks(square) & Pieces[KING] & Colors[them])
-	{
-		return true;
-	}
-
-	return false;
 }
 
 // Returns all of the pieces (from both colors) that attack the given square

@@ -290,10 +290,11 @@ u64 perft(Position &position, int depth)
 	u64 result = 0;
 
 	Move moves[256];
+	s16 moveScores[256];
 	if (!position.IsInCheck())
 	{
 		int moveCount = GenerateQuietMoves(position, moves);
-		moveCount += GenerateCaptureMoves(position, moves + moveCount);
+		moveCount += GenerateCaptureMoves(position, moves + moveCount, moveScores + moveCount);
 
 		for (int i = 0; i < moveCount; i++)
 		{
@@ -314,8 +315,9 @@ u64 perft(Position &position, int depth)
 		if (verifyCheckEscape)
 		{
 			Move vMoves[256];
+			s16 vScores[256];
 			int vCount = GenerateQuietMoves(position, vMoves);
-			vCount += GenerateCaptureMoves(position, vMoves + vCount);
+			vCount += GenerateCaptureMoves(position, vMoves + vCount, vScores + vCount);
 			for (int i = 0; i < vCount; i++)
 			{
 				MoveUndo moveUndo;
@@ -520,8 +522,6 @@ void TestSuite(int depth)
 				}
 
 				test++;
-
-				break;
 			}
 		}
 	}
@@ -552,8 +552,8 @@ void RunTests()
 //	TestSuite(7);
 
 /*	Position position;
-	position.Initialize("8/Pk6/8/8/8/8/6Kp/8 w - -");
+	position.Initialize("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 	perft(position, 3);*/
 
-//	RunPerftSuite(5);
+	RunPerftSuite(4);
 }

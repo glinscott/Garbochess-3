@@ -254,16 +254,8 @@ public:
 	inline void GenerateCaptures()
 	{
 		at = 0;
-		moveCount = GenerateCaptureMoves(position, moves);
+		moveCount = GenerateCaptureMoves(position, moves, moveScores);
 		moves[moveCount] = 0; // Sentinel move
-
-		for (int i = 0; i < moveCount; i++)
-		{
-			const PieceType fromPiece = GetPieceType(position.Board[GetFrom(moves[i])]);
-			const PieceType toPiece = GetPieceType(position.Board[GetTo(moves[i])]);
-
-			moveScores[i] = ScoreCaptureMove(moves[i], fromPiece, toPiece);
-		}
 	}
 
 	inline void GenerateCheckEscape()
@@ -292,10 +284,13 @@ public:
 		moveCount = GenerateCheckingMoves(position, moves);
 		moves[moveCount] = 0;
 
+		// Disabled since we don't order our checking moves.
+		/*
 		for (int i = 0; i < moveCount; i++)
 		{
 			moveScores[i] = 0;
 		}
+		*/
 	}
 
 	inline void InitializeNormalMoves(const Move hashMove, const Move killer1, const Move killer2)
@@ -314,7 +309,7 @@ public:
 		// The move initialization code stores a sentinel move at the end of the movelist.
 		ASSERT(at <= moveCount);
 
-		int bestScore = moveScores[at], bestIndex = at;
+		s16 bestScore = moveScores[at], bestIndex = at;
 		for (int i = at + 1; i < moveCount; i++)
 		{
 			ASSERT(moveScores[i] >= MinEval && moveScores[i] <= MaxEval);
@@ -446,45 +441,8 @@ public:
 
 private:
 
-	int ScoreCaptureMove(const Move move, const PieceType fromPiece, const PieceType toPiece)
-	{
-		// Currently scoring moves using MVV/LVA scoring.  ie. PxQ goes first, BxQ next, ... , KxP last
-		const Move moveType = GetMoveType(move);
-		if (moveType == MoveTypeNone)
-		{
-			ASSERT(fromPiece != PIECE_NONE);
-			ASSERT(toPiece != PIECE_NONE);
-
-			return toPiece * 100 - fromPiece;
-		}
-		else
-		{
-			if (moveType == MoveTypeEnPassent)
-			{
-				// e.p. captures
-				return PAWN * 100 - PAWN;
-			}
-			else
-			{
-				// Promotions
-				ASSERT(moveType == MoveTypePromotion);
-
-				if (GetPromotionMoveType(move) == QUEEN)
-				{
-					// Goes first
-					return QUEEN * 100;
-				}
-				else
-				{
-					// Other types of promotions, we don't really care about
-					return 0;
-				}
-			}
-		}
-	}
-
 	Move moves[maxMoves];
-	int moveScores[maxMoves];
+	s16 moveScores[maxMoves];
 	int moveCount;
 
 	Move losingCaptures[32];
@@ -700,7 +658,7 @@ int QSearchCheck(Position &position, SearchInfo &searchInfo, int alpha, const in
 	return bestScore;
 }
 
-int Search(Position &position, SearchInfo &searchInfo, const int beta, const int depth, const bool inCheck)
+int Search(Position &position, SearchInfo &searchInfo, const int beta, const int depth, const int flags, const bool inCheck)
 {
 	ASSERT(depth > 0);
 	ASSERT(inCheck ? position.IsInCheck() : !position.IsInCheck());
@@ -740,7 +698,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		hashMove = 0;
 	}
 	
-	if (!inCheck)
+	if (!inCheck && depth >= 2 * OnePly && !(flags & 1))
 	{
 		// TODO: null move should not happen in endgame situations...  low material being the main one.
 
@@ -757,7 +715,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		else
 		{
 			// TODO: we should not allow recursive null-moves.
-			score = -Search(position, searchInfo, 1 - beta, newDepth, false);
+			score = -Search(position, searchInfo, 1 - beta, newDepth, 1, false);
 		}
 
 		position.UnmakeNullMove(moveUndo);
@@ -809,7 +767,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 			}
 			else
 			{
-				value = -Search(position, searchInfo, 1 - beta, newDepth, isChecking);
+				value = -Search(position, searchInfo, 1 - beta, newDepth, 0, isChecking);
 			}
 
 			position.UnmakeMove(move, moveUndo);
@@ -938,7 +896,7 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 				}
 				else
 				{
-					value = -Search(position, searchInfo, -alpha, newDepth, isChecking);
+					value = -Search(position, searchInfo, -alpha, newDepth, 0, isChecking);
 				}
 
 				if (value > alpha)
@@ -1020,7 +978,7 @@ int SearchRoot(Position &position, SearchInfo &searchInfo, Move *moves, int *mov
 			}
 			else
 			{
-				value = -Search(position, searchInfo, -alpha, newDepth, isChecking);
+				value = -Search(position, searchInfo, -alpha, newDepth, 0, isChecking);
 			}
 
 			// Research if value > alpha, as this means this node is a new PV node.

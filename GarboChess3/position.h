@@ -41,8 +41,39 @@ public:
 	void MakeNullMove(MoveUndo &moveUndo);
 	void UnmakeNullMove(MoveUndo &moveUndo);
 
-	inline bool IsSquareAttacked(const Square square, const Color them) const { return IsSquareAttacked(square, them, GetAllPieces()); }
-	bool IsSquareAttacked(const Square square, const Color them, const Bitboard allPieces) const;
+	inline bool IsSquareAttacked(const Square square, const Color them) const
+	{
+		return IsSquareAttacked(square, them, GetAllPieces());
+	}
+	inline bool IsSquareAttacked(const Square square, const Color them, const Bitboard allPieces) const
+	{
+		const Bitboard enemyPieces = Colors[them];
+
+		if ((GetPawnAttacks(square, FlipColor(them)) & Pieces[PAWN] & enemyPieces) ||
+			(GetKnightAttacks(square) & Pieces[KNIGHT] & enemyPieces))
+		{
+			return true;
+		}
+
+		const Bitboard bishopQueen = Pieces[BISHOP] | Pieces[QUEEN];
+		if (GetBishopAttacks(square, allPieces) & bishopQueen & enemyPieces)
+		{
+			return true;
+		}
+
+		const Bitboard rookQueen = Pieces[ROOK] | Pieces[QUEEN];
+		if (GetRookAttacks(square, allPieces) & rookQueen & enemyPieces)
+		{
+			return true;
+		}
+
+		if (GetKingAttacks(square) & Pieces[KING] & enemyPieces)
+		{
+			return true;
+		}
+
+		return false;
+	}
 
 	inline bool IsInCheck() const { return IsSquareAttacked(KingPos[ToMove], FlipColor(ToMove)); }
 	inline bool CanCaptureKing() const { return IsSquareAttacked(KingPos[FlipColor(ToMove)], ToMove); }

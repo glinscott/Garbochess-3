@@ -26,8 +26,8 @@ u64 GetCurrentMilliseconds()
 int CheckForPendingInput()
 {
 	static bool IsCheckForPendingInputInitialized = false;
-	static int pipe;
 	static HANDLE readHandle;
+	static int pipe;
 
 	DWORD result;
 

@@ -219,8 +219,42 @@ void InitializeBitboards()
 	}
 }
 
+int ScoreCaptureMove(const Move move, const PieceType fromPiece, const PieceType toPiece)
+{
+	// Currently scoring moves using MVV/LVA scoring.  ie. PxQ goes first, BxQ next, ... , KxP last
+	const Move moveType = GetMoveType(move);
+	if (moveType == MoveTypeNone)
+	{
+		return ScoreCaptureMove(fromPiece, toPiece);
+	}
+	else
+	{
+		if (moveType == MoveTypeEnPassent)
+		{
+			// e.p. captures
+			return PAWN * 100 - PAWN;
+		}
+		else
+		{
+			// Promotions
+			ASSERT(moveType == MoveTypePromotion);
+
+			if (GetPromotionMoveType(move) == QUEEN)
+			{
+				// Goes first
+				return QUEEN * 100;
+			}
+			else
+			{
+				// Other types of promotions, we don't really care about
+				return 0;
+			}
+		}
+	}
+}
+
 template<int homeRow, int targetRow, int promotionRow>
-void GeneratePawnQuietMoves(Bitboard b, Move *moves, int &moveCount, const Color us, const Bitboard empty, const Bitboard them)
+inline void GeneratePawnQuietMoves(Bitboard b, Move *moves, int &moveCount, const Color us, const Bitboard empty, const Bitboard them)
 {
 	while (b)
 	{
@@ -274,7 +308,7 @@ void GeneratePawnQuietMoves(Bitboard b, Move *moves, int &moveCount, const Color
 }
 
 template<int promotionRow>
-void GeneratePawnCaptures(Bitboard b, Move *moves, int &moveCount, const Color us, const Bitboard empty, const Bitboard them)
+inline void GeneratePawnCaptures(Bitboard b, Move *moves, s16 *moveScores, int &moveCount, const Color us, const Bitboard empty, const Bitboard them, const Position &position)
 {
 	while (b)
 	{
@@ -289,6 +323,7 @@ void GeneratePawnCaptures(Bitboard b, Move *moves, int &moveCount, const Color u
 			while (attacks)
 			{
 				const Square to = PopFirstBit(attacks);
+				moveScores[moveCount] = ScoreCaptureMove(PAWN, GetPieceType(position.Board[to]));
 				moves[moveCount++] = GenerateMove(from, to);
 			}
 		}
@@ -299,6 +334,7 @@ void GeneratePawnCaptures(Bitboard b, Move *moves, int &moveCount, const Color u
 			while (attacks)
 			{
 				const Square to = PopFirstBit(attacks);
+				moveScores[moveCount] = QUEEN * 100;
 				moves[moveCount++] = GeneratePromotionMove(from, to, PromotionTypeQueen);
 			}
 		}
@@ -314,6 +350,20 @@ void GeneratePawnCaptures(Bitboard b, Move *moves, int &moveCount, const Color u
 		while (attacks)												\
 		{															\
 			const Square to = PopFirstBit(attacks);					\
+			moves[moveCount++] = GenerateMove(from, to);			\
+		}															\
+	}
+
+#define MoveGenerationLoopAttacks(func, pieceBitboard, pieceType)	\
+	b = (pieceBitboard) & ourPieces;								\
+	while (b)														\
+	{																\
+		const Square from = PopFirstBit(b);							\
+		Bitboard attacks = (func) & targets;						\
+		while (attacks)												\
+		{															\
+			const Square to = PopFirstBit(attacks);					\
+			moveScores[moveCount] = ScoreCaptureMove((pieceType), GetPieceType(position.Board[to]));	\
 			moves[moveCount++] = GenerateMove(from, to);			\
 		}															\
 	}
@@ -396,7 +446,7 @@ int GenerateQuietMoves(const Position &position, Move *moves)
 	return moveCount;
 }
 
-int GenerateCaptureMoves(const Position &position, Move *moves)
+int GenerateCaptureMoves(const Position &position, Move *moves, s16 *moveScores)
 {
 	const Color us = position.ToMove;
 	const Color them = FlipColor(us);
@@ -410,11 +460,11 @@ int GenerateCaptureMoves(const Position &position, Move *moves)
 	// Pawn attacks, pawn promotions (queen only)
 	if (us == WHITE)
 	{
-		GeneratePawnCaptures<RANK_7>(position.Pieces[PAWN] & ourPieces, moves, moveCount, us, ~allPieces, targets);
+		GeneratePawnCaptures<RANK_7>(position.Pieces[PAWN] & ourPieces, moves, moveScores, moveCount, us, ~allPieces, targets, position);
 	}
 	else
 	{
-		GeneratePawnCaptures<RANK_2>(position.Pieces[PAWN] & ourPieces, moves, moveCount, us, ~allPieces, targets);
+		GeneratePawnCaptures<RANK_2>(position.Pieces[PAWN] & ourPieces, moves, moveScores, moveCount, us, ~allPieces, targets, position);
 	}
 
 	// En Passent
@@ -424,15 +474,24 @@ int GenerateCaptureMoves(const Position &position, Move *moves)
 		while (b)
 		{
 			Square from = PopFirstBit(b);
+			moveScores[moveCount] = ScoreCaptureMove(PAWN, PAWN);
 			moves[moveCount++] = GenerateEnPassentMove(from, position.EnPassent);
 		}
 	}
 
-	// Normal piece moves
-	MoveGenerationLoop(GetKnightAttacks(from), position.Pieces[KNIGHT]);
-	MoveGenerationLoop(GetBishopAttacks(from, allPieces), position.Pieces[BISHOP] | position.Pieces[QUEEN]);
-	MoveGenerationLoop(GetRookAttacks(from, allPieces), position.Pieces[ROOK] | position.Pieces[QUEEN]);
-	MoveGenerationLoop(GetKingAttacks(from), position.Pieces[KING]);
+	// Normal piece captures
+	MoveGenerationLoopAttacks(GetKnightAttacks(from), position.Pieces[KNIGHT], KNIGHT);
+	MoveGenerationLoopAttacks(GetBishopAttacks(from, allPieces), position.Pieces[BISHOP], BISHOP);
+	MoveGenerationLoopAttacks(GetRookAttacks(from, allPieces), position.Pieces[ROOK], ROOK);
+	MoveGenerationLoopAttacks(GetQueenAttacks(from, allPieces), position.Pieces[QUEEN], QUEEN);
+	MoveGenerationLoopAttacks(GetKingAttacks(from), position.Pieces[KING], KING);
+
+#if _DEBUG
+	for (int i = 0; i < moveCount; i++)
+	{
+		ASSERT(moveScores[i] == ScoreCaptureMove(moves[i], GetPieceType(position.Board[GetFrom(moves[i])]), GetPieceType(position.Board[GetTo(moves[i])])));
+	}
+#endif
 
 	return moveCount;
 }
@@ -836,6 +895,7 @@ bool IsMovePseudoLegal(const Position &position, const Move move)
 int GenerateLegalMoves(Position &position, Move *legalMoves)
 {
 	Move moves[256];
+	s16 moveScores[256];
 	int moveCount;
 	if (position.IsInCheck())
 	{
@@ -844,7 +904,7 @@ int GenerateLegalMoves(Position &position, Move *legalMoves)
 	else
 	{
 		moveCount = GenerateQuietMoves(position, moves);
-		moveCount += GenerateCaptureMoves(position, moves + moveCount);
+		moveCount += GenerateCaptureMoves(position, moves + moveCount, moveScores);
 	}
 
 	int legalCount = 0;
