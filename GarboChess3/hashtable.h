@@ -3,6 +3,7 @@ const int HashFlagsBeta = 1;
 const int HashFlagsExact = 2;
 const int HashFlagsMask = 3;
 
+#pragma pack(push, 1)
 struct HashEntry
 {
 	u32 Lock;
@@ -21,6 +22,7 @@ struct HashEntry
 		return Extra >> 4;
 	}
 };
+#pragma pack(pop)
 
 extern HashEntry *HashTable;
 extern u64 HashMask;
