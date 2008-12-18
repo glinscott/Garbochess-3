@@ -20,12 +20,12 @@ const int MoveSentinelScore = MinEval - 1;
 // TODO: make this use contempt?
 const int DrawScore = 0;
 
+// TODO: Use PSQ tables in SEE?
+static const int seePieceValues[8] = { 0, 1, 3, 3, 5, 10, 10000, 0 };
+
 // This version of SEE does not calculate the exact material imbalance, it just returns true = winning or equal, false = losing
 bool FastSee(const Position &position, const Move move)
 {
-	// TODO: Use PSQ tables in SEE?
-	const int pieceValues[8] = { 0, 1, 3, 3, 5, 10, 10000, 0 };
-
 	const Square from = GetFrom(move);
 	const Square to = GetTo(move);
 
@@ -36,8 +36,8 @@ bool FastSee(const Position &position, const Move move)
 	ASSERT(GetPieceColor(position.Board[from]) == us);
 	ASSERT(position.Board[to] == PIECE_NONE || GetPieceColor(position.Board[from]) != GetPieceColor(position.Board[to]));
 
-	const int fromValue = pieceValues[GetPieceType(position.Board[from])];
-	const int toValue = pieceValues[GetPieceType(position.Board[to])];
+	const int fromValue = seePieceValues[GetPieceType(position.Board[from])];
+	const int toValue = seePieceValues[GetPieceType(position.Board[to])];
 
 	if (fromValue <= toValue)
 	{
@@ -68,7 +68,7 @@ bool FastSee(const Position &position, const Move move)
 	const int captureDeficit = fromValue - toValue;
 	// If any opponent knights can capture back, and the deficit we have to make up is greater than the knights value,
 	// it's not worth it.  We can capture on this square again, and the opponent doesn't have to capture back.
-	if (captureDeficit > pieceValues[KNIGHT] && (attackingPieces & enemyPieces))
+	if (captureDeficit > seePieceValues[KNIGHT] && (attackingPieces & enemyPieces))
 	{
 		return false;
 	}
@@ -78,7 +78,7 @@ bool FastSee(const Position &position, const Move move)
 	XorClearBit(allPieces, from);
 
 	attackingPieces |= GetBishopAttacks(to, allPieces) & (position.Pieces[BISHOP] | position.Pieces[QUEEN]);
-	if (captureDeficit > pieceValues[BISHOP] && (attackingPieces & position.Pieces[BISHOP] & enemyPieces))
+	if (captureDeficit > seePieceValues[BISHOP] && (attackingPieces & position.Pieces[BISHOP] & enemyPieces))
 	{
 		return false;
 	}
@@ -94,7 +94,7 @@ bool FastSee(const Position &position, const Move move)
 
 	// Rook attacks
 	attackingPieces |= GetRookAttacks(to, allPieces) & (position.Pieces[ROOK] | position.Pieces[QUEEN]);
-	if (captureDeficit > pieceValues[ROOK] && (attackingPieces & position.Pieces[ROOK] & enemyPieces))
+	if (captureDeficit > seePieceValues[ROOK] && (attackingPieces & position.Pieces[ROOK] & enemyPieces))
 	{
 		return false;
 	}
@@ -130,7 +130,7 @@ bool FastSee(const Position &position, const Move move)
 			if (attacks)
 			{
 				// They can capture with a piece
-				capturingPieceValue = pieceValues[capturingPiece];
+				capturingPieceValue = seePieceValues[capturingPiece];
 				
 				const Square attackingSquare = GetFirstBitIndex(attacks);
 				XorClearBit(attackingPieces, attackingSquare);
@@ -168,7 +168,7 @@ bool FastSee(const Position &position, const Move move)
 			if (attacks)
 			{
 				// We can capture with a piece
-				capturingPieceValue = pieceValues[capturingPiece];
+				capturingPieceValue = seePieceValues[capturingPiece];
 				
 				const Square attackingSquare = GetFirstBitIndex(attacks);
 				XorClearBit(attackingPieces, attackingSquare);
@@ -309,27 +309,25 @@ public:
 		// The move initialization code stores a sentinel move at the end of the movelist.
 		ASSERT(at <= moveCount);
 
-		s16 bestScore = moveScores[at], bestIndex = at;
-		for (int i = at + 1; i < moveCount; i++)
+		s16 bestScore = moveScores[at], bestMove = moves[at];
+		for (int i = ++at; i < moveCount; i++)
 		{
 			ASSERT(moveScores[i] >= MinEval && moveScores[i] <= MaxEval);
 
-			if (moveScores[i] > bestScore)
+			const s16 score = moveScores[i];
+			if (score > bestScore)
 			{
-				bestIndex = i;
-				bestScore = moveScores[i];
+				const Move move = moves[i];
+				moves[i] = bestMove;
+				moveScores[i] = bestScore;
+				bestMove = move;
+				bestScore = score;
 			}
-		}
-
-		if (bestIndex != at)
-		{
-			Swap(moveScores[at], moveScores[bestIndex]);
-			Swap(moves[at], moves[bestIndex]);
 		}
 
 		ASSERT((at + 1 >= moveCount) || (moveScores[at] >= moveScores[at + 1]));
 
-		return moves[at++];
+		return bestMove;
 	}
 
 	inline Move NextQMove()
@@ -407,19 +405,21 @@ public:
 			moveCount = GenerateQuietMoves(position, moves);
 			at = 0;
 
+/*
 			for (int i = 0; i < moveCount; i++)
 			{
 				// TODO: history?
 				moveScores[i] = 0;
 			}
-
+*/
 			state = MoveGenerationState_QuietMoves;
 			// Intentional fall-through
 
 		case MoveGenerationState_QuietMoves:
 			while (at < moveCount)
 			{
-				const Move bestMove = PickBestMove();
+//				const Move bestMove = PickBestMove();
+				const Move bestMove = moves[at++];
 				if (bestMove == hashMove || bestMove == killer1 || bestMove == killer2)
 				{
 					continue;

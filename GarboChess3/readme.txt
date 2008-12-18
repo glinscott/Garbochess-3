@@ -1,5 +1,3 @@
-
-
 - 8.5 million NPS on perft currently - 32 bit
 - 16 million NPS on perft 64bit now after psq tables
 

@@ -470,7 +470,6 @@ void TestSuite(int depth)
 	fopen_s(&file, "tests/wac.epd", "rt");
 
 	char line[500];
-	u64 startTime = GetCurrentMilliseconds();
 	int test = 0, passed = 0;
 	while (std::fgets(line, 500, file) != NULL)
 	{
@@ -526,7 +525,6 @@ void TestSuite(int depth)
 		}
 	}
 
-	u64 totalTime = GetCurrentMilliseconds() - startTime;
 	printf("Passed: %d/%d\n", passed, test);
 
 	fclose(file);
@@ -543,17 +541,20 @@ void RunTests()
 
 	InitializeHash(16000000);
 
-/*	Position position;
-	position.Initialize("r4rk1/1p2ppbp/p2pbnp1/q7/3BPPP1/2N2B2/PPP4P/R2Q1RK1 b - -");
+	Position position;
+	position.Initialize("r4rk1/1p2ppb1/p2pbnpp/q7/3BPPP1/2N2B2/PPP4P/R2Q1RK1 w - - 0 2");
 	int score;
-	Move move = IterativeDeepening(position, 9, score, true);
-	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);*/
+	Move move = IterativeDeepening(position, 12, score, true);
+	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);
 
 //	TestSuite(7);
 
-/*	Position position;
-	position.Initialize("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-	perft(position, 3);*/
+/*	u64 startTime = GetCurrentMilliseconds();
+	Position position;
+	position.Initialize("r4rk1/1p2ppb1/p2pbnpp/q7/3BPPP1/2N2B2/PPP4P/R2Q1RK1 w - - 0 2");
+	u64 totalCount = perft(position, 5);
+	u64 totalTime = GetCurrentMilliseconds() - startTime;
+	printf("NPS: %.2lf\n", (totalCount / (totalTime / 1000.0)));*/
 
-	RunPerftSuite(4);
+//	RunPerftSuite(4);
 }
