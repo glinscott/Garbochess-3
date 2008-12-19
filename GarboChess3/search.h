@@ -18,6 +18,6 @@ SearchInfo &GetSearchInfo(int thread);
 bool FastSee(const Position &position, const Move move);
 int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int beta, const int depth);
 int QSearchCheck(Position &position, SearchInfo &searchInfo, int alpha, const int beta, const int depth);
-Move IterativeDeepening(Position &position, const int maxDepth, int &score, bool printSearch);
+Move IterativeDeepening(Position &position, const int maxDepth, int &score, s64 searchTime, bool printSearchInfo);
 
 void InitializeSearch();

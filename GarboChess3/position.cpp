@@ -203,6 +203,16 @@ std::string Position::GetFen() const
 	return result;
 }
 
+void Position::Clone(Position &other) const
+{
+	// This should probably be cleaner
+	memcpy(&other, this, sizeof(Position));
+
+#if _DEBUG
+	other.VerifyBoard();
+#endif
+}
+
 void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 {
 	ASSERT(IsMovePseudoLegal((const Position&)*this, move));

@@ -34,6 +34,7 @@ public:
 	static void StaticInitialize();
 	void Initialize(const std::string &fen);
 	std::string GetFen() const;
+	void Clone(Position &other) const;
 
 	void MakeMove(const Move move, MoveUndo &moveUndo);
 	void UnmakeMove(const Move move, const MoveUndo &moveUndo);

@@ -40,7 +40,7 @@ void IncrementHashDate()
 std::string ReadLine()
 {
 	char line[1024];
-	gets_s(line, 1024);
+	gets_s(line, 1023);
 	return std::string(line);
 }
 
@@ -97,7 +97,7 @@ void ReadCommand()
 				for (int j = i + 1; j < (int)tokens.size(); j++)
 				{
 					MoveUndo moveUndo;
-					GamePosition.MakeMove(MakeMoveFromUciString(tokens[j]), moveUndo);
+					GamePosition.MakeMove(MakeMoveFromUciString(GamePosition, tokens[j]), moveUndo);
 				}
 				break;
 			}
@@ -142,7 +142,7 @@ void ReadCommand()
 		}
 
 		// TODO: way better time management needed
-		if (movetime == -1)
+		if (movetime == -1 && !infinite)
 		{
 			int time, inc;
 			if (GamePosition.ToMove == WHITE)
@@ -158,19 +158,17 @@ void ReadCommand()
 
 			movetime = time;
 			if (inc != -1) movetime += inc * 40;
-			movetime = max(0, (movetime / 40) - 5);
+			movetime = max(0, (movetime / 35) - 5);
 		}
-
-		KillSearch = false;
 
 		// Begin the search
 		IncrementHashDate();
 		int score;
-		Move move = IterativeDeepening(GamePosition, MaxPly, score, true);
+		Move move = IterativeDeepening(GamePosition, MaxPly, score, movetime, true);
 
 		ASSERT(IsMovePseudoLegal(GamePosition, move));
 
-		printf("bestmove %s\n", GetMoveUci(move));
+		printf("bestmove %s\n", GetMoveUci(move).c_str());
 	}
 	else if (command == "stop")
 	{
@@ -195,15 +193,20 @@ void RunEngine()
 
 int main()
 {
+	// Disable buffering on stdin/stdout
+	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stdin, NULL, _IONBF, 0);
+	fflush(NULL);
+
 	InitializeBitboards();
 	Position::StaticInitialize();
 	InitializePsqTable();
 	InitializeSearch();
 	InitializeHash(16000000);
 
-	RunTests();
+//	RunTests();
 
-//	RunEngine();
+	RunEngine();
 
 /*	Position position;
 	position.Initialize("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");

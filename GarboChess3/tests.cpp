@@ -67,7 +67,7 @@ void UnitTests()
 	// Regression test for search not detecting stalemates
 	position.Initialize("1k6/5RP1/1P6/1K6/6r1/8/8/8 w - - 0 1");
 	int score;
-	Move move = IterativeDeepening(position, 1, score, false);
+	Move move = IterativeDeepening(position, 1, score, -1, false);
 	ASSERT(score > 100 && score < 10000);
 }
 
@@ -76,7 +76,7 @@ void CheckSee(const std::string &fen, const std::string &move, bool expected)
 	Position position;
 	
 	position.Initialize(fen);
-	Move captureMove = MakeMoveFromUciString(move);
+	Move captureMove = MakeMoveFromUciString(position, move);
 	ASSERT(IsMovePseudoLegal(position, captureMove));
 	ASSERT(FastSee(position, captureMove) == expected);
 
@@ -146,6 +146,14 @@ void MoveSortingTest()
 	// TODO: test move sorting (might have to factor it a bit better)
 }
 
+// Only to be used by tests
+static Move MakeMoveFromUciStringUnsafe(const std::string &moveString)
+{
+	const Square from = MakeSquare(RANK_1 - (moveString[1] - '1'), moveString[0] - 'a');
+	const Square to = MakeSquare(RANK_1 - (moveString[3] - '1'), moveString[2] - 'a');
+	return GenerateMove(from, to);
+}
+
 void DrawTests()
 {
 	Position position;
@@ -154,10 +162,10 @@ void DrawTests()
 	Move move[10];
 	MoveUndo moveUndo[10];
 	
-	move[0] = MakeMoveFromUciString("g1f3");
-	move[1] = MakeMoveFromUciString("g8f6");
-	move[2] = MakeMoveFromUciString("f3g1");
-	move[3] = MakeMoveFromUciString("f6g8");
+	move[0] = MakeMoveFromUciStringUnsafe("g1f3");
+	move[1] = MakeMoveFromUciStringUnsafe("g8f6");
+	move[2] = MakeMoveFromUciStringUnsafe("f3g1");
+	move[3] = MakeMoveFromUciStringUnsafe("f6g8");
 
 	for (int i = 0; i < 4; i++)
 	{
@@ -182,10 +190,10 @@ void HashTests()
 	Move move[10];
 	MoveUndo moveUndo[10];
 	
-	move[0] = MakeMoveFromUciString("g1f3");
-	move[1] = MakeMoveFromUciString("g8f6");
-	move[2] = MakeMoveFromUciString("f3g1");
-	move[3] = MakeMoveFromUciString("f6g8");
+	move[0] = MakeMoveFromUciStringUnsafe("g1f3");
+	move[1] = MakeMoveFromUciStringUnsafe("g8f6");
+	move[2] = MakeMoveFromUciStringUnsafe("f3g1");
+	move[3] = MakeMoveFromUciStringUnsafe("f6g8");
 
 	ASSERT(HashTable != 0);
 	ASSERT(HashMask == (0x3ff & ~3));
@@ -488,7 +496,7 @@ void TestSuite(int depth)
 //				int score = AlphaBetaTest(position, MinEval, MaxEval, bestMove, depth);
 
 				int iterScore;
-				Move iterMove = IterativeDeepening(position, depth, iterScore, false);
+				Move iterMove = IterativeDeepening(position, depth, iterScore, -1, false);
 				bestMove = iterMove;
 
 				std::string bestMoveString = GetMoveSAN(position, bestMove);
@@ -544,7 +552,7 @@ void RunTests()
 	Position position;
 	position.Initialize("r4rk1/1p2ppb1/p2pbnpp/q7/3BPPP1/2N2B2/PPP4P/R2Q1RK1 w - - 0 2");
 	int score;
-	Move move = IterativeDeepening(position, 12, score, true);
+	Move move = IterativeDeepening(position, 12, score, -1, true);
 	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);
 
 //	TestSuite(7);

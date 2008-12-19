@@ -51,7 +51,7 @@ bool FastSee(const Position &position, const Move move)
 	}
 
 	// We should only be making initially losing captures here
-	ASSERT(fromValue > pieceValues[PAWN] || GetMoveType(move) == MoveTypePromotion || toValue == 0);
+	ASSERT(fromValue > seePieceValues[PAWN] || GetMoveType(move) == MoveTypePromotion || toValue == 0);
 
 	const Bitboard enemyPieces = position.Colors[them];
 
@@ -325,7 +325,7 @@ public:
 			}
 		}
 
-		ASSERT((at + 1 >= moveCount) || (moveScores[at] >= moveScores[at + 1]));
+		ASSERT(at >= moveCount || (moveScores[at - 1] >= moveScores[at]));
 
 		return bestMove;
 	}
@@ -471,8 +471,10 @@ private:
 
 // The time the search was begun at
 u64 SearchStartTime;
+u64 SearchTimeLimit;
 
 bool KillSearch;
+jmp_buf KillSearchJump;
 
 const int SearchInfoPageSize = 4096;
 u64 searchInfoThreads;
@@ -673,6 +675,27 @@ int QSearchCheck(Position &position, SearchInfo &searchInfo, int alpha, const in
 	return bestScore;
 }
 
+void CheckKillSearch()
+{
+	void ReadCommand();
+
+	while (!KillSearch && CheckForPendingInput())
+	{
+		ReadCommand();
+	}
+
+	u64 elapsedTime = GetCurrentMilliseconds() - SearchStartTime;
+	if (elapsedTime >= SearchTimeLimit)
+	{
+		KillSearch = true;
+	}
+
+	if (KillSearch)
+	{
+		longjmp(KillSearchJump, 1);
+	}
+}
+
 int Search(Position &position, SearchInfo &searchInfo, const int beta, const int depth, const int flags, const bool inCheck)
 {
 	ASSERT(depth > 0);
@@ -827,6 +850,11 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 	StoreHash(position.Hash, bestScore, hashMove, depth, HashFlagsAlpha);
 
+	if ((searchInfo.NodeCount & 0x3ff) == 0)
+	{
+		CheckKillSearch();
+	}
+
 	return bestScore;
 }
 
@@ -972,6 +1000,12 @@ int SearchRoot(Position &position, SearchInfo &searchInfo, Move *moves, int *mov
 {
 	ASSERT(depth % OnePly == 0);
 
+	// This is a bit of a hack, but it's cleaner than checking everywhere that we have terminated the search cleanly.
+	if (setjmp(KillSearchJump) != 0)
+	{
+		return MinEval;
+	}
+
 	int originalAlpha = alpha;
 	int bestScore = MoveSentinelScore;
 
@@ -1038,9 +1072,22 @@ int SearchRoot(Position &position, SearchInfo &searchInfo, Move *moves, int *mov
 	return bestScore;
 }
 
-Move IterativeDeepening(Position &position, const int maxDepth, int &score, bool printSearchInfo)
+Move IterativeDeepening(Position &rootPosition, const int maxDepth, int &score, s64 searchTime, bool printSearchInfo)
 {
+	KillSearch = false;
+
 	SearchStartTime = GetCurrentMilliseconds();
+	if (searchTime < 0)
+	{
+		SearchTimeLimit = (u64)-1LL;
+	}
+	else
+	{
+		SearchTimeLimit = (u64)searchTime;
+	}
+
+	Position position;
+	rootPosition.Clone(position);
 
 	SearchInfo &searchInfo = GetSearchInfo(0);
 	searchInfo.NodeCount = 0;

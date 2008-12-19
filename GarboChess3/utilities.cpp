@@ -20,7 +20,7 @@ std::vector<std::string> tokenize(const std::string &in, const std::string &tok)
 	return res;
 }
 
-Move MakeMoveFromUciString(const std::string &moveString)
+Move MakeMoveFromUciString(Position &position, const std::string &moveString)
 {
 	const Square from = MakeSquare(RANK_1 - (moveString[1] - '1'), moveString[0] - 'a');
 	const Square to = MakeSquare(RANK_1 - (moveString[3] - '1'), moveString[2] - 'a');
@@ -38,7 +38,18 @@ Move MakeMoveFromUciString(const std::string &moveString)
 		return GeneratePromotionMove(from, to, promotionType);
 	}
 
-	return GenerateMove(from, to);
+	Move moves[256];
+	int moveCount = GenerateLegalMoves(position, moves);
+	for (int i = 0; i < moveCount; i++)
+	{
+		if (GetFrom(moves[i]) == from && GetTo(moves[i]) == to)
+		{
+			return moves[i];
+		}
+	}
+
+	ASSERT(false);
+	return 0;
 }
 
 std::string GetSquareSAN(const Square square)
