@@ -157,8 +157,9 @@ void ReadCommand()
 			}
 
 			movetime = time;
-			if (inc != -1) movetime += inc * 40;
-			movetime = max(0, (movetime / 35) - 5);
+			if (inc != -1) movetime += inc * 30;
+			movetime = max(0, (movetime / 30) - 50);
+			movetime = min(movetime, (wtime + winc) - 50);
 		}
 
 		// Begin the search
@@ -204,14 +205,14 @@ int main()
 	InitializeSearch();
 	InitializeHash(16000000);
 
-//	RunTests();
+	RunTests();
 
-	RunEngine();
+//	RunEngine();
 
 /*	Position position;
-	position.Initialize("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+	position.Initialize("2rq1rk1/1b1nbppp/p2p1n2/1ppNp3/4P3/1P1B1P1P/P1PP2PN/R1BQ1RK1 b - - 0 12");
 	int score;
-	Move move = IterativeDeepening(position, 12, score, true);
+	Move move = IterativeDeepening(position, 12, score, -1, true);
 	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);*/
 
 	return 0;
