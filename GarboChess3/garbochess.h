@@ -326,4 +326,4 @@ inline Bitboard GetSquaresBetween(const Square from, const Square to)
 // Timer
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 u64 GetCurrentMilliseconds();
-int CheckForPendingInput();
+bool CheckForPendingInput();

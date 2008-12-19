@@ -23,7 +23,7 @@ u64 GetCurrentMilliseconds()
 	return u64(ticks.QuadPart / TimerDivisor);
 }
 
-int CheckForPendingInput()
+bool CheckForPendingInput()
 {
 	static bool IsCheckForPendingInputInitialized = false;
 	static HANDLE readHandle;
@@ -44,13 +44,15 @@ int CheckForPendingInput()
 	}
 	if (pipe)
 	{
-		if (!PeekNamedPipe(readHandle, NULL, 0, NULL, &result, NULL))
-			return 1;
-		return result;
+		if (PeekNamedPipe(readHandle, NULL, 0, NULL, &result, NULL) == 0)
+			return false;
+		return result > 0;
 	}
 	else
 	{
-		GetNumberOfConsoleInputEvents(readHandle, &result);
-		return result <= 1 ? 0 : result;
+		return false;
+		// This does not appear to work at all...
+//		GetNumberOfConsoleInputEvents(readHandle, &result);
+//		return result > 1;
 	}
 }

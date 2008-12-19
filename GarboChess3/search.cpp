@@ -850,8 +850,9 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 	StoreHash(position.Hash, bestScore, hashMove, depth, HashFlagsAlpha);
 
-	if ((searchInfo.NodeCount & 0xfff) == 0)
+	if (searchInfo.NodeCount + searchInfo.QNodeCount > searchInfo.Timeout)
 	{
+		searchInfo.Timeout = searchInfo.NodeCount + searchInfo.QNodeCount + 30000;
 		CheckKillSearch();
 	}
 
@@ -1092,6 +1093,7 @@ Move IterativeDeepening(Position &rootPosition, const int maxDepth, int &score, 
 	SearchInfo &searchInfo = GetSearchInfo(0);
 	searchInfo.NodeCount = 0;
 	searchInfo.QNodeCount = 0;
+	searchInfo.Timeout = 0;
 	// TODO: try tricks with killers? - like moving them down two ply
 
 	Move moves[256];

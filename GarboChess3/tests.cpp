@@ -549,13 +549,13 @@ void RunTests()
 
 	InitializeHash(16000000);
 
-	Position position;
+/*	Position position;
 	position.Initialize("r4rk1/1p2ppb1/p2pbnpp/q7/3BPPP1/2N2B2/PPP4P/R2Q1RK1 w - - 0 2");
 	int score;
 	Move move = IterativeDeepening(position, 12, score, -1, true);
-	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);
+	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);*/
 
-//	TestSuite(7);
+	TestSuite(7);
 
 /*	u64 startTime = GetCurrentMilliseconds();
 	Position position;

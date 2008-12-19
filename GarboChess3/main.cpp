@@ -39,10 +39,11 @@ void IncrementHashDate()
 
 std::string ReadLine()
 {
+//	fprintf(stderr, "WARNING: Reading input during search (search will be paused until new-line)...\n");
 	char line[1024];
-	gets_s(line, 1023);
+	gets_s(line, 1024);
 	return std::string(line);
-}
+} 
 
 Position GamePosition;
 
@@ -205,9 +206,9 @@ int main()
 	InitializeSearch();
 	InitializeHash(16000000);
 
-	RunTests();
+//	RunTests();
 
-//	RunEngine();
+	RunEngine();
 
 /*	Position position;
 	position.Initialize("2rq1rk1/1b1nbppp/p2p1n2/1ppNp3/4P3/1P1B1P1P/P1PP2PN/R1BQ1RK1 b - - 0 12");

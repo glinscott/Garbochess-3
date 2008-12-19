@@ -7,6 +7,7 @@ struct SearchInfo
 {
 	u64 NodeCount;
 	u64 QNodeCount;
+	u64 Timeout;
 
 	Move Killers[MaxPly][2];
 };
