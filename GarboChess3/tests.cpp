@@ -479,6 +479,7 @@ void TestSuite(int depth)
 
 	char line[500];
 	int test = 0, passed = 0;
+	u64 totalNodes = 0;
 	while (std::fgets(line, 500, file) != NULL)
 	{
 		Position position;
@@ -498,6 +499,8 @@ void TestSuite(int depth)
 				int iterScore;
 				Move iterMove = IterativeDeepening(position, depth, iterScore, -1, false);
 				bestMove = iterMove;
+
+				totalNodes += GetSearchInfo(0).NodeCount + GetSearchInfo(0).QNodeCount;
 
 				std::string bestMoveString = GetMoveSAN(position, bestMove);
 /*				if (iterScore != score)
@@ -533,6 +536,7 @@ void TestSuite(int depth)
 		}
 	}
 
+	printf("%I64d", totalNodes);
 	printf("Passed: %d/%d\n", passed, test);
 
 	fclose(file);
@@ -555,7 +559,7 @@ void RunTests()
 	Move move = IterativeDeepening(position, 12, score, -1, true);
 	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);*/
 
-	TestSuite(7);
+	TestSuite(6);
 
 /*	u64 startTime = GetCurrentMilliseconds();
 	Position position;

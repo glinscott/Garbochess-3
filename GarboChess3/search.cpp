@@ -484,6 +484,8 @@ SearchInfo &GetSearchInfo(int thread)
 	return (SearchInfo&)*((SearchInfo*)(searchInfoThreads + (SearchInfoPageSize * thread)));
 }
 
+const int qPruningWeight[8] = { 800, 100, 300, 300, 500, 900, 0, 0 };
+
 // depth == 0 is normally what is called for q-search.
 // Checks are searched when depth >= -(OnePly / 2).  Depth is decreased by 1 for checks
 int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int beta, const int depth)
@@ -508,23 +510,22 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 			return eval;
 		}
 	}
-	else
-	{
-		// TODO: Don't even try captures that won't make it back up to alpha?
-	}
-	
+
+	const int optimisticValue = eval + 150;
+
 	MoveSorter<64> moves(position);
 	moves.GenerateCaptures();
 
 	Move move;
 	while ((move = moves.NextQMove()) != 0)
 	{
-		if (!FastSee(position, move))
+		if (depth <= 0 && !FastSee(position, move))
 		{
 			// TODO: we are excluding losing checks here as well - is this safe?
-			// TODO: use SEE when depth >= 0? - tapered q-search ideas
 			continue;
 		}
+
+		const int pruneValue = optimisticValue + qPruningWeight[GetPieceType(position.Board[GetTo(move)])];
 
 		MoveUndo moveUndo;
 		position.MakeMove(move, moveUndo);
@@ -540,7 +541,14 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 			}
 			else
 			{
-				value = -QSearch(position, searchInfo, -beta, -alpha, depth - OnePly);
+				if (pruneValue <= alpha)
+				{
+					value = pruneValue;
+				}
+				else
+				{
+					value = -QSearch(position, searchInfo, -beta, -alpha, depth - OnePly);
+				}
 			}
 
 			position.UnmakeMove(move, moveUndo);
@@ -574,9 +582,8 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 
 	while ((move = moves.NextQMove()) != 0)
 	{
-		if (!FastSee(position, move))
+		if (depth <= 0 && !FastSee(position, move))
 		{
-			// TODO: use SEE when depth >= 0? - tapered q-search ideas
 			continue;
 		}
 
@@ -736,32 +743,59 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		hashMove = 0;
 	}
 	
-	if (!inCheck && depth >= 2 * OnePly && !(flags & 1))
+	if (!inCheck)
 	{
-		// TODO: null move should not happen in endgame situations...  low material being the main one.
-		// TODO: don't try null-move unless eval >= beta?
+		const int evaluation = Evaluate(position);
 
-		// Attempt to null-move
-		MoveUndo moveUndo;
-		position.MakeNullMove(moveUndo);
-
-		const int newDepth = depth - (4 * OnePly);
-		int score;
-		if (newDepth <= 0)
+		int razorEval = evaluation + 125;
+		if (razorEval < beta)
 		{
-			score = -QSearch(position, searchInfo, -beta, 1 - beta, 0);
+			// Try some razoring
+			if (depth <= OnePly)
+			{
+				int value = QSearch(position, searchInfo, beta - 1, beta, depth - OnePly);
+				return max(value, razorEval);
+			}
+			razorEval += 175;
+			if (razorEval < beta && depth <= OnePly * 3)
+			{
+				int value = QSearch(position, searchInfo, beta - 1, beta, depth - OnePly);
+				if (value < beta)
+				{
+					return max(value, razorEval);
+				}
+			}
 		}
-		else
-		{
-			score = -Search(position, searchInfo, 1 - beta, newDepth, 1, false);
-		}
 
-		position.UnmakeNullMove(moveUndo);
-
-		if (score >= beta)
+		if (depth >= 2 * OnePly && 
+			evaluation >= beta &&
+			!(flags & 1))
 		{
-			// TODO: store null move cutoffs in hash table?
-			return score;
+			// TODO: null move should not happen in endgame situations...  low material being the main one.
+			// TODO: don't try null-move unless eval >= beta?
+
+			// Attempt to null-move
+			MoveUndo moveUndo;
+			position.MakeNullMove(moveUndo);
+
+			const int newDepth = depth - (4 * OnePly);
+			int score;
+			if (newDepth <= 0)
+			{
+				score = -QSearch(position, searchInfo, -beta, 1 - beta, 0);
+			}
+			else
+			{
+				score = -Search(position, searchInfo, 1 - beta, newDepth, 1, false);
+			}
+
+			position.UnmakeNullMove(moveUndo);
+
+			if (score >= beta)
+			{
+				// TODO: store null move cutoffs in hash table?
+				return score;
+			}
 		}
 	}
 
@@ -783,7 +817,8 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 			singular = true;
 		}
 	}
-	
+
+	int moveCount = 0;
 	int bestScore = MoveSentinelScore;
 	Move move;
 	while ((move = moves.NextNormalMove()) != 0)
@@ -797,7 +832,26 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 			// Search move
 			const bool isChecking = position.IsInCheck();
-			const int newDepth = (isChecking || singular) ? depth : depth - OnePly;
+			int newDepth;
+			if (isChecking || singular)
+			{
+				newDepth = depth;
+			}
+			else
+			{
+				// Apply late move reductions if the conditions are met.
+				if (!inCheck &&
+					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves &&
+					moveCount >= 4 &&
+					depth >= 3 * OnePly)
+				{
+					newDepth = depth - (2 * OnePly);
+				}
+				else
+				{
+					newDepth = depth - OnePly;
+				}
+			}
 
 			if (newDepth <= 0)
 			{
@@ -808,7 +862,19 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 				value = -Search(position, searchInfo, 1 - beta, newDepth, 0, isChecking);
 			}
 
+			if (newDepth == depth - (2 * OnePly) && value >= beta)
+			{
+				// Re-search
+				ASSERT(!isChecking);
+				ASSERT(!inCheck);
+
+				newDepth = depth - OnePly;
+				value = -Search(position, searchInfo, 1 - beta, depth - OnePly, 0, isChecking);
+			}
+
 			position.UnmakeMove(move, moveUndo);
+
+			moveCount++;
 
 			if (value > bestScore)
 			{

@@ -39,7 +39,6 @@ void IncrementHashDate()
 
 std::string ReadLine()
 {
-//	fprintf(stderr, "WARNING: Reading input during search (search will be paused until new-line)...\n");
 	char line[1024];
 	gets_s(line, 1024);
 	return std::string(line);
@@ -206,7 +205,7 @@ int main()
 	InitializeSearch();
 	InitializeHash(16000000);
 
-//	RunTests();
+	RunTests();
 
 	RunEngine();
 
