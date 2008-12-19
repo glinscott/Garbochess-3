@@ -1149,7 +1149,7 @@ Move IterativeDeepening(Position &rootPosition, const int maxDepth, int &score, 
 			const u64 nodeCount = searchInfo.NodeCount + searchInfo.QNodeCount;
 			const u64 msTaken = GetCurrentMilliseconds() - SearchStartTime;
 			const u64 nps = (nodeCount * 1000) / max(1ULL, msTaken);
-			printf("info depth %d score cp %d nodes %lld time %lld nps %lld pv %s\n", depth, (int)value, nodeCount, msTaken, nps, GetMoveSAN(position, moves[0]).c_str());
+			printf("info depth %d score cp %d nodes %I64d time %I64d nps %I64d pv %s\n", depth, (int)value, nodeCount, msTaken, nps, GetMoveSAN(position, moves[0]).c_str());
 		}
 	}
 
