@@ -850,7 +850,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 	StoreHash(position.Hash, bestScore, hashMove, depth, HashFlagsAlpha);
 
-	if ((searchInfo.NodeCount & 0x3ff) == 0)
+	if ((searchInfo.NodeCount & 0xfff) == 0)
 	{
 		CheckKillSearch();
 	}

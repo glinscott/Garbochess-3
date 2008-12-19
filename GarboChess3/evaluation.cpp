@@ -25,7 +25,7 @@ int Evaluate(const Position &position)
 
 	// Goes from gamePhaseMax at opening to 0 at endgame
 	int gamePhase = 
-		max(gamePhaseMax,
+		min(gamePhaseMax,
 			(knightCount * KnightPhaseScale) +
 			(bishopCount * BishopPhaseScale) +
 			(rookCount * RookPhaseScale) +
