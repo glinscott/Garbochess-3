@@ -39,8 +39,8 @@ void IncrementHashDate()
 
 std::string ReadLine()
 {
-	char line[1024];
-	gets_s(line, 1024);
+	char line[16384];
+	gets_s(line, 16384);
 	return std::string(line);
 } 
 
@@ -201,11 +201,11 @@ int main()
 
 	InitializeBitboards();
 	Position::StaticInitialize();
-	InitializePsqTable();
+	InitializeEvaluation();
 	InitializeSearch();
 	InitializeHash(16000000);
 
-	RunTests();
+//	RunTests();
 
 	RunEngine();
 

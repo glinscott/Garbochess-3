@@ -138,11 +138,11 @@ std::string GetMoveSAN(Position &position, const Move move)
 
 		if (dupe)
 		{
-			if (rowDiff)
+			if (columnDiff)
 			{
 				result += GetSquareSAN(from)[0];
 			}
-			else if (columnDiff)
+			else if (rowDiff)
 			{
 				result += GetSquareSAN(from)[1];
 			}

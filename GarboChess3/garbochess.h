@@ -211,6 +211,16 @@ inline int CountBitsSetFew(Bitboard b)
 	return result;
 }
 
+inline Bitboard FlipBitboard(const Bitboard b)
+{
+	Bitboard result = 0;
+	for (int row = 0; row < 8; row++)
+	{
+		result |= ((b >> (row * 8)) & 0xFF) << ((7 - row) * 8);
+	}
+	return result;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Move operations
 ////////////////////////////////////////////////////////////////////////////////////////////////////

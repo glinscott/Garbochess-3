@@ -11,25 +11,21 @@ WAC results:
 6 ply - 278/300 (w/ null move)
 
 1. c3 -> expected Rxb2 - passed pawn
+79. d5 -> expected Ra1
 85. Kc7 -> expected Ng4+ - unstoppable pawn
 86. cxb4 -> expected Rxe5 - passed pawn
-91. h6 -> expected Bxg4 - not enough depth? - may be a null move related problem
-99. Kb3 -> expected b6+
+99. Be3 -> expected b6+
+100. Rf2 -> expected Bc3
 140. Kf1 -> expected Qxf4
-145. Bh3 -> expected Bc8
 151. Nd5 -> expected Ne4
 162. cxd5 -> expected Qg2+
-198. R1d1 -> expected Bxc6
+195. Rb6 -> expected Nb4
 221. bxa3 -> expected Bf6
-228. Ke5 -> expected Rxh4
-229. Rf7 -> expected Rb4
+228. Rh8 -> expected Rxh4
+229. a4 -> expected Rb4
 234. Qe4 -> expected Qxf7+
+242. b5 -> expected Qe2
 246. Qc5+ -> expected Rxb5
-250. Rb7 -> expected Qe5
-261. Re6 -> expected Rh6
-263. R8b8 -> expected Rab8
 264. Qxe4 -> expected exf6
-268. O-O -> expected axb4
-269. Rxe8+ -> expected Qg4
 273. Rg5+ -> expected Rb6
-Passed: 278/300
+Passed: 282/300

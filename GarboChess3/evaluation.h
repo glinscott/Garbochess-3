@@ -7,9 +7,14 @@ const int MaxEval = 32767;
 extern int PsqTableOpening[16][64];
 extern int PsqTableEndgame[16][64];
 
-void InitializePsqTable();
+void InitializeEvaluation();
 
-int Evaluate(const Position &position);
+struct EvalInfo
+{
+	int GamePhase[2];
+};
+
+int Evaluate(const Position &position, EvalInfo &evalInfo);
 
 template<class T>
 inline const T& min(const T &a, const T &b) { return a < b ? a : b; }

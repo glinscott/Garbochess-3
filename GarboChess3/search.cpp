@@ -500,7 +500,8 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 	}
 
 	// What do we want from our evaluation? - this needs to be decided (mobility/threat information?)
-	int eval = Evaluate(position);
+	EvalInfo evalInfo;
+	int eval = Evaluate(position, evalInfo);
 
 	if (eval > alpha)
 	{
@@ -745,7 +746,8 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 	
 	if (!inCheck)
 	{
-		const int evaluation = Evaluate(position);
+		EvalInfo evalInfo;
+		const int evaluation = Evaluate(position, evalInfo);
 
 		int razorEval = evaluation + 125;
 		if (razorEval < beta)
@@ -769,7 +771,9 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 		if (depth >= 2 * OnePly && 
 			evaluation >= beta &&
-			!(flags & 1))
+			!(flags & 1) &&
+			// Make sure we don't null move if we don't have any heavy pieces left
+			evalInfo.GamePhase[position.ToMove] > 0)
 		{
 			// TODO: null move should not happen in endgame situations...  low material being the main one.
 			// TODO: don't try null-move unless eval >= beta?

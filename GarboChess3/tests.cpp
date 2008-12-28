@@ -236,6 +236,12 @@ void HashTests()
 	// TODO: test hash depth collisions
 }
 
+void PawnEvaluationTests()
+{
+	// TODO: a few unit tests on the passed pawn evaluation
+	// TOOD: a few unit tests on the pawn hash mechanism
+}
+
 u64 perft(Position &position, int depth)
 {
 	const bool verifyCheckingMoves = false;
@@ -559,7 +565,7 @@ void RunTests()
 	Move move = IterativeDeepening(position, 12, score, -1, true);
 	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);*/
 
-	TestSuite(6);
+	TestSuite(9);
 
 /*	u64 startTime = GetCurrentMilliseconds();
 	Position position;
