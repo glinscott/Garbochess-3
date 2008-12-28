@@ -798,8 +798,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 			if (score >= beta)
 			{
-				// TODO is there a bug here?
-//				StoreHash(position.Hash, score, 0, depth, HashFlagsBeta);
+				StoreHash(position.Hash, score, 0, depth, HashFlagsBeta);
 				return score;
 			}
 		}
