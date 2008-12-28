@@ -69,6 +69,21 @@ void UnitTests()
 	int score;
 	Move move = IterativeDeepening(position, 1, score, -1, false);
 	ASSERT(score > 100 && score < 10000);
+
+	// Regression test for check escape generator not allowing a double pawn push check to be escaped by e.p.
+	position.Initialize("8/8/4k1p1/4Pp2/5PK1/4rN1p/8/8 w - f6 0 1");
+	moveCount = GenerateCheckEscapeMoves(position, moves);
+	ASSERT(moveCount == 5);
+
+	// Regression test for e.p. captures being generated even though they didn't save the king from checkmate
+	position.Initialize("rnb1k2r/ppp2pp1/8/3pPK1p/8/P5qP/P1PNP1P1/R1BQ1BNR w kq d6 0 1");
+	moveCount = GenerateCheckEscapeMoves(position, moves);
+	ASSERT(moveCount == 1);
+
+	// Regression test for e.p. captures being generated with non-pawns.
+	position.Initialize("8/2b2k2/3p1P2/2nPpNBp/1RQ1P1K1/5P2/7q/r7 w - - 0 0");
+	moveCount = GenerateCheckEscapeMoves(position, moves);
+	ASSERT(moveCount == 0);
 }
 
 void CheckSee(const std::string &fen, const std::string &move, bool expected)
@@ -565,7 +580,7 @@ void RunTests()
 	Move move = IterativeDeepening(position, 12, score, -1, true);
 	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);*/
 
-	TestSuite(9);
+//	TestSuite(9);
 
 /*	u64 startTime = GetCurrentMilliseconds();
 	Position position;
@@ -574,5 +589,5 @@ void RunTests()
 	u64 totalTime = GetCurrentMilliseconds() - startTime;
 	printf("NPS: %.2lf\n", (totalCount / (totalTime / 1000.0)));*/
 
-//	RunPerftSuite(4);
+	RunPerftSuite(4);
 }

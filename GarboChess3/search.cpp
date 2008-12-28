@@ -219,6 +219,8 @@ void StableSortMoves(Move *moves, int *moveScores, int moveCount)
 	}
 }
 
+int History[16][64];
+
 enum MoveGenerationState
 {
 	MoveGenerationState_Hash,
@@ -405,21 +407,21 @@ public:
 			moveCount = GenerateQuietMoves(position, moves);
 			at = 0;
 
-/*
 			for (int i = 0; i < moveCount; i++)
 			{
-				// TODO: history?
-				moveScores[i] = 0;
+				int historyScore = History[position.Board[GetFrom(moves[i])]][GetTo(moves[i])];
+				if (historyScore > 32767) historyScore = 32767;
+				if (historyScore < -32767) historyScore = -32767;
+				moveScores[i] = historyScore;
 			}
-*/
+
 			state = MoveGenerationState_QuietMoves;
 			// Intentional fall-through
 
 		case MoveGenerationState_QuietMoves:
 			while (at < moveCount)
 			{
-//				const Move bestMove = PickBestMove();
-				const Move bestMove = moves[at++];
+				const Move bestMove = PickBestMove();
 				if (bestMove == hashMove || bestMove == killer1 || bestMove == killer2)
 				{
 					continue;
@@ -680,6 +682,8 @@ int QSearchCheck(Position &position, SearchInfo &searchInfo, int alpha, const in
 		}
 	}
 
+	ASSERT(bestScore != MoveSentinelScore);
+
 	return bestScore;
 }
 
@@ -769,15 +773,12 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 			}
 		}
 
-		if (depth >= 2 * OnePly && 
+		if (depth >= 2 * OnePly &&
 			evaluation >= beta &&
 			!(flags & 1) &&
 			// Make sure we don't null move if we don't have any heavy pieces left
 			evalInfo.GamePhase[position.ToMove] > 0)
 		{
-			// TODO: null move should not happen in endgame situations...  low material being the main one.
-			// TODO: don't try null-move unless eval >= beta?
-
 			// Attempt to null-move
 			MoveUndo moveUndo;
 			position.MakeNullMove(moveUndo);
@@ -797,7 +798,8 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 			if (score >= beta)
 			{
-				// TODO: store null move cutoffs in hash table?
+				// TODO is there a bug here?
+//				StoreHash(position.Hash, score, 0, depth, HashFlagsBeta);
 				return score;
 			}
 		}
@@ -873,7 +875,9 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 				ASSERT(!inCheck);
 
 				newDepth = depth - OnePly;
-				value = -Search(position, searchInfo, 1 - beta, depth - OnePly, 0, isChecking);
+				ASSERT(newDepth > 0);
+
+				value = -Search(position, searchInfo, 1 - beta, newDepth, 0, isChecking);
 			}
 
 			position.UnmakeMove(move, moveUndo);
@@ -887,7 +891,18 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 				if (value >= beta)
 				{
-					// TODO: update history
+					const Square from = GetFrom(move);
+					History[position.Board[from]][GetTo(move)] += depth * depth;
+					if (History[position.Board[from]][GetTo(move)] > 200000)
+					{
+						for (int i = 0; i < 16; i++)
+						{
+							for (int j = 0; j < 64; j++)
+							{
+								History[i][j] /= 8;
+							}
+						}
+					}
 
 					StoreHash(position.Hash, value, move, depth, HashFlagsBeta);
 
@@ -958,7 +973,17 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 		hashMove = 0;
 	}
 
-	// TODO: iid if no hashMove!
+	if (depth >= OnePly * 2 &&
+		hashMove == 0)
+	{
+		// Try IID
+		SearchPV(position, searchInfo, alpha, beta, depth - OnePly, inCheck);
+
+		if (ProbeHash(position.Hash, hashEntry))
+		{
+			hashMove = hashEntry->Move;
+		}
+	}
 
 	// TODO: use root move sorting in PV positions?
 	MoveSorter<256> moves(position);
@@ -1007,7 +1032,7 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 			{
 				if (newDepth <= 0)
 				{
-					value = -QSearch(position, searchInfo, -beta, -alpha, 0);
+					value = -QSearch(position, searchInfo, -alpha - 1, -alpha, 0);
 				}
 				else
 				{
@@ -1076,6 +1101,8 @@ int SearchRoot(Position &position, SearchInfo &searchInfo, Move *moves, int *mov
 	{
 		return MinEval;
 	}
+
+	memset(History, 0, sizeof(History));
 
 	int originalAlpha = alpha;
 	int bestScore = MoveSentinelScore;

@@ -68,6 +68,7 @@ inline void StoreHash(const u64 hash, const s16 score, const Move move, const in
 				best = i;
 				break;
 			}
+			HashTable[i].Move = move;
 			return;
 		}
 		
@@ -85,7 +86,7 @@ inline void StoreHash(const u64 hash, const s16 score, const Move move, const in
 
 		if (matchScore < bestScore)
 		{
-			bestScore = score;
+			bestScore = matchScore;
 			best = i;
 		}
 	}

@@ -48,7 +48,7 @@ public:
 	}
 	inline bool IsSquareAttacked(const Square square, const Color them, const Bitboard allPieces) const
 	{
-		const Bitboard enemyPieces = Colors[them];
+		const Bitboard enemyPieces = Colors[them] & allPieces;
 
 		if ((GetPawnAttacks(square, FlipColor(them)) & Pieces[PAWN] & enemyPieces) ||
 			(GetKnightAttacks(square) & Pieces[KNIGHT] & enemyPieces))
@@ -99,6 +99,11 @@ public:
 			}
 		}
 		return false;
+	}
+
+	inline void ResetMoveDepth()
+	{
+		MoveDepth = 0;
 	}
 
 private:

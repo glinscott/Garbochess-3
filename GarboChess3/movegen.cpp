@@ -777,7 +777,7 @@ int GenerateCheckEscapeMoves(const Position &position, Move *moves)
 		{
 			// We could potentially be checked by this piece.  Discovered checks will be handled elsewhere.  So, the only
 			// move that could save us here is an e.p. capture.
-			b = GetPawnAttacks(position.EnPassent, them) & ourPieces;
+			b = GetPawnAttacks(position.EnPassent, them) & ourPieces & position.Pieces[PAWN];
 			while (b)
 			{
 				Square from = PopFirstBit(b);
@@ -785,7 +785,10 @@ int GenerateCheckEscapeMoves(const Position &position, Move *moves)
 				// pawn causes a revealed check.
 				Bitboard allPiecesMinusEp = allPieces;
 				XorClearBit(allPiecesMinusEp, from);
-				XorClearBit(allPiecesMinusEp, checkingSquare);
+
+				const Square epSquare = (position.EnPassent - from < 0) ? position.EnPassent + 8 : position.EnPassent - 8;
+				XorClearBit(allPiecesMinusEp, epSquare);
+
 				if (!position.IsSquareAttacked(kingSquare, them, allPiecesMinusEp))
 				{
 					moves[moveCount++] = GenerateEnPassentMove(from, position.EnPassent);

@@ -96,8 +96,6 @@ void InitializeEvaluation()
 			PassedPawnBitboards[square][WHITE] |= PawnGreaterBitboards[MakeSquare(row, column + 1)][WHITE];
 			IsolatedPawnBitboards[square] |= PawnLessEqualBitboards[MakeSquare(0, column + 1)][WHITE];
 		}
-		void PrintBitboard(const Bitboard b);
-		PrintBitboard(IsolatedPawnBitboards[square]);
 	}
 
 	for (Square square = 0; square < 64; square++)
