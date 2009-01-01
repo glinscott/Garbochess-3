@@ -486,7 +486,7 @@ SearchInfo &GetSearchInfo(int thread)
 	return (SearchInfo&)*((SearchInfo*)(searchInfoThreads + (SearchInfoPageSize * thread)));
 }
 
-const int qPruningWeight[8] = { 800, 100, 300, 300, 500, 900, 0, 0 };
+const int qPruningWeight[8] = { 900, 100, 325, 325, 500, 900, 0, 0 };
 
 // depth == 0 is normally what is called for q-search.
 // Checks are searched when depth >= -(OnePly / 2).  Depth is decreased by 1 for checks
@@ -514,7 +514,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 		}
 	}
 
-	const int optimisticValue = eval + 150;
+	const int optimisticValue = eval + 50;
 
 	MoveSorter<64> moves(position);
 	moves.GenerateCaptures();
@@ -546,7 +546,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 			{
 				if (pruneValue <= alpha)
 				{
-					value = pruneValue;
+					value = max(value, pruneValue);
 				}
 				else
 				{

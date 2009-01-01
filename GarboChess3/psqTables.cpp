@@ -6,7 +6,7 @@ int PsqTableOpening[16][64];
 int PsqTableEndgame[16][64];
 
 // Material weights (in centipawns, which are directly used by the evaluation value)
-EVAL_FEATURE(PawnOpening,   85);
+EVAL_FEATURE(PawnOpening,   75);
 EVAL_FEATURE(PawnEndgame,   90);
 EVAL_FEATURE(KnightOpening, 325);
 EVAL_FEATURE(KnightEndgame, 320);
@@ -18,7 +18,7 @@ EVAL_FEATURE(QueenOpening,  975);
 EVAL_FEATURE(QueenEndgame,  975);
 
 EVAL_FEATURE(BishopPairOpening, 50);
-EVAL_FEATURE(BishopPairEndgame, 60);
+EVAL_FEATURE(BishopPairEndgame, 70);
 
 // Psq weights (in millipawns, all are divided by 10 before being used in the psq-table)
 EVAL_FEATURE(PawnColumnOpening, 45);
