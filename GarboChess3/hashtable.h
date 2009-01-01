@@ -70,7 +70,10 @@ inline void StoreHash(const u64 hash, const s16 score, const Move move, int dept
 				best = i;
 				break;
 			}
-			HashTable[i].Move = move;
+			if (HashTable[i].Move == 0)
+			{
+				HashTable[i].Move = move;
+			}
 			return;
 		}
 		

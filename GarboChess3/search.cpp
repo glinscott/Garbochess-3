@@ -904,27 +904,31 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 				{
 					const int normalizedDepth = depth / OnePly;
 
-					const Square from = GetFrom(move);
-					History[position.Board[from]][GetTo(move)] += normalizedDepth * normalizedDepth;
-					if (History[position.Board[from]][GetTo(move)] > 200000)
-					{
-						for (int i = 0; i < 16; i++)
-						{
-							for (int j = 0; j < 64; j++)
-							{
-								History[i][j] /= 8;
-							}
-						}
-					}
-
 					StoreHash(position.Hash, value, move, depth, HashFlagsBeta);
 
-					// Update killers (only for non-captures)
-					if (position.Board[GetTo(move)] == PIECE_NONE &&
-						move != searchInfo.Killers[normalizedDepth][0])
+					// Update killers and history (only for non-captures)
+					const Square to = GetTo(move);
+					if (position.Board[to] == PIECE_NONE)
 					{
-						searchInfo.Killers[normalizedDepth][1] = searchInfo.Killers[normalizedDepth][0];
-						searchInfo.Killers[normalizedDepth][0] = move;
+						if (move != searchInfo.Killers[normalizedDepth][0])
+						{
+							searchInfo.Killers[normalizedDepth][1] = searchInfo.Killers[normalizedDepth][0];
+							searchInfo.Killers[normalizedDepth][0] = move;
+						}
+
+						// Update history board, which is [pieceType][to], to allow for better move ordering
+						const Square from = GetFrom(move);
+						History[position.Board[from]][to] += normalizedDepth * normalizedDepth;
+						if (History[position.Board[from]][to] > 200000)
+						{
+							for (int i = 0; i < 16; i++)
+							{
+								for (int j = 0; j < 64; j++)
+								{
+									History[i][j] /= 8;
+								}
+							}
+						}
 					}
 
 					return value;
@@ -1185,6 +1189,28 @@ int SearchRoot(Position &position, SearchInfo &searchInfo, Move *moves, int *mov
 	return bestScore;
 }
 
+void PrintPV(Position &position, const Move move, int depth)
+{
+	if (depth < 0 || position.IsDraw())
+	{
+		return;
+	}
+
+	printf("%s ", GetMoveSAN(position, move).c_str());
+
+	MoveUndo moveUndo;
+	position.MakeMove(move, moveUndo);
+
+	HashEntry *hashEntry;
+	if (ProbeHash(position.Hash, hashEntry) &&
+		IsMovePseudoLegal(position, hashEntry->Move))
+	{
+		PrintPV(position, hashEntry->Move, depth - 1);
+	}
+
+	position.UnmakeMove(move, moveUndo);
+}
+
 Move IterativeDeepening(Position &rootPosition, const int maxDepth, int &score, s64 searchTime, bool printSearchInfo)
 {
 	KillSearch = false;
@@ -1263,7 +1289,9 @@ Move IterativeDeepening(Position &rootPosition, const int maxDepth, int &score, 
 			const u64 nodeCount = searchInfo.NodeCount + searchInfo.QNodeCount;
 			const u64 msTaken = GetCurrentMilliseconds() - SearchStartTime;
 			const u64 nps = (nodeCount * 1000) / max(1ULL, msTaken);
-			printf("info depth %d score cp %d nodes %I64d time %I64d nps %I64d pv %s\n", depth, (int)value, nodeCount, msTaken, nps, GetMoveSAN(position, moves[0]).c_str());
+			printf("info depth %d score cp %d nodes %I64d time %I64d nps %I64d pv ", depth, (int)value, nodeCount, msTaken, nps);
+			PrintPV(position, moves[0], depth * 3);
+			printf("\n");
 		}
 	}
 

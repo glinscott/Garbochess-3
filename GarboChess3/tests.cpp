@@ -226,7 +226,7 @@ void HashTests()
 		ASSERT(foundHash);
 		ASSERT(result->Score == testScore + i);
 		ASSERT(result->Move == testMove + i);
-		ASSERT(result->Depth == testDepth + i);
+		ASSERT(result->Depth == (testDepth + i) / OnePly);
 		ASSERT(result->GetHashFlags() == ((testFlags + i) & HashFlagsMask));
 		ASSERT(result->GetHashDate() == HashDate);
 
@@ -242,7 +242,7 @@ void HashTests()
 		ASSERT(foundHash);
 		ASSERT(result->Score == testScore + i);
 		ASSERT(result->Move == testMove + i);
-		ASSERT(result->Depth == testDepth + i);
+		ASSERT(result->Depth == (testDepth + i) / OnePly);
 		ASSERT(result->GetHashFlags() == ((testFlags + i) & HashFlagsMask));
 		ASSERT(result->GetHashDate() == HashDate);
 	}
@@ -589,5 +589,5 @@ void RunTests()
 	u64 totalTime = GetCurrentMilliseconds() - startTime;
 	printf("NPS: %.2lf\n", (totalCount / (totalTime / 1000.0)));*/
 
-	RunPerftSuite(4);
+//	RunPerftSuite(4);
 }
