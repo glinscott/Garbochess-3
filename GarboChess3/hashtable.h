@@ -94,7 +94,7 @@ inline void StoreHash(const u64 hash, const s16 score, const Move move, const in
 	HashTable[best].Lock = lock;
 	HashTable[best].Move = move;
 	HashTable[best].Score = score;
-	HashTable[best].Depth = depth;
+	HashTable[best].Depth = depth / OnePly;
 
 	ASSERT(flags <= 0xf);
 	ASSERT(HashDate <= 0xf);

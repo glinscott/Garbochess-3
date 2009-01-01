@@ -725,7 +725,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 	Move hashMove;
 	if (ProbeHash(position.Hash, hashEntry))
 	{
-		if (hashEntry->Depth >= depth)
+		if (hashEntry->Depth >= (depth / OnePly))
 		{
 			const int hashFlags = hashEntry->GetHashFlags();
 			if (hashFlags == HashFlagsExact)
@@ -900,8 +900,10 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 				if (value >= beta)
 				{
+					const int normalizedDepth = depth / OnePly;
+
 					const Square from = GetFrom(move);
-					History[position.Board[from]][GetTo(move)] += (depth / OnePly) * (depth / OnePly);
+					History[position.Board[from]][GetTo(move)] += normalizedDepth * normalizedDepth;
 					if (History[position.Board[from]][GetTo(move)] > 200000)
 					{
 						for (int i = 0; i < 16; i++)
@@ -917,10 +919,10 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 					// Update killers (only for non-captures)
 					if (position.Board[GetTo(move)] == PIECE_NONE &&
-						move != searchInfo.Killers[depth][0])
+						move != searchInfo.Killers[normalizedDepth][0])
 					{
-						searchInfo.Killers[depth][1] = searchInfo.Killers[depth][0];
-						searchInfo.Killers[depth][0] = move;
+						searchInfo.Killers[normalizedDepth][1] = searchInfo.Killers[normalizedDepth][0];
+						searchInfo.Killers[normalizedDepth][0] = move;
 					}
 
 					return value;
