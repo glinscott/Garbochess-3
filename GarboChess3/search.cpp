@@ -546,6 +546,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 			{
 				if (pruneValue <= alpha)
 				{
+					// TODO: should we only do delta pruning in cut/all nodes?
 					value = max(value, pruneValue);
 				}
 				else
@@ -783,7 +784,9 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 			MoveUndo moveUndo;
 			position.MakeNullMove(moveUndo);
 
-			const int newDepth = depth - (4 * OnePly);
+			const int R = (depth >= 7 * OnePly) ? (5 * OnePly) : (4 * OnePly);
+
+			const int newDepth = depth - R;
 			int score;
 			if (newDepth <= 0)
 			{
@@ -795,6 +798,13 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 			}
 
 			position.UnmakeNullMove(moveUndo);
+
+			// Null move verification
+			if (depth > 5 * OnePly &&
+				score >= beta)
+			{
+				score = Search(position, searchInfo, beta, depth - (5 * OnePly), 1, false);
+			}
 
 			if (score >= beta)
 			{
@@ -846,8 +856,8 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 			{
 				// Apply late move reductions if the conditions are met.
 				if (!inCheck &&
-					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves &&
-					moveCount >= 4 &&
+					moves.GetMoveGenerationState() >= MoveGenerationState_QuietMoves &&
+					moveCount >= 3 &&
 					depth >= 3 * OnePly)
 				{
 					newDepth = depth - (2 * OnePly);
@@ -891,7 +901,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 				if (value >= beta)
 				{
 					const Square from = GetFrom(move);
-					History[position.Board[from]][GetTo(move)] += depth * depth;
+					History[position.Board[from]][GetTo(move)] += (depth / OnePly) * (depth / OnePly);
 					if (History[position.Board[from]][GetTo(move)] > 200000)
 					{
 						for (int i = 0; i < 16; i++)
@@ -976,7 +986,9 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 		hashMove == 0)
 	{
 		// Try IID
-		SearchPV(position, searchInfo, alpha, beta, depth - OnePly, inCheck);
+		SearchPV(position, searchInfo, alpha, beta, min(depth - (2 * OnePly), depth / 2), inCheck);
+
+		// TODO: re-search if < alpha here?  that means we won't have a best move...
 
 		if (ProbeHash(position.Hash, hashEntry))
 		{
