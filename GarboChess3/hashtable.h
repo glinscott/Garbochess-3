@@ -50,7 +50,7 @@ inline bool ProbeHash(const u64 hash, HashEntry *&result)
 	return false;
 }
 
-inline void StoreHash(const u64 hash, const s16 score, const Move move, const int depth, const int flags)
+inline void StoreHash(const u64 hash, const s16 score, const Move move, int depth, const int flags)
 {
 	const u64 base = hash & HashMask;
 	ASSERT(base <= HashMask);
@@ -58,6 +58,8 @@ inline void StoreHash(const u64 hash, const s16 score, const Move move, const in
 	const u32 lock = hash >> 32;
 	int bestScore = 512;
 	u64 best;
+
+	depth /= OnePly;
 
 	for (u64 i = base; i < base + 4; i++)
 	{
@@ -94,7 +96,7 @@ inline void StoreHash(const u64 hash, const s16 score, const Move move, const in
 	HashTable[best].Lock = lock;
 	HashTable[best].Move = move;
 	HashTable[best].Score = score;
-	HashTable[best].Depth = depth / OnePly;
+	HashTable[best].Depth = depth;
 
 	ASSERT(flags <= 0xf);
 	ASSERT(HashDate <= 0xf);

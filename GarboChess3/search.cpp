@@ -514,7 +514,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 		}
 	}
 
-	const int optimisticValue = eval + 50;
+	const int optimisticValue = eval + 100;
 
 	MoveSorter<64> moves(position);
 	moves.GenerateCaptures();
@@ -784,7 +784,8 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 			MoveUndo moveUndo;
 			position.MakeNullMove(moveUndo);
 
-			const int R = (depth >= 7 * OnePly) ? (5 * OnePly) : (4 * OnePly);
+			//const int R = (depth >= 7 * OnePly) ? (5 * OnePly) : (4 * OnePly);
+			const int R = 4 * OnePly;
 
 			const int newDepth = depth - R;
 			int score;
@@ -856,8 +857,8 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 			{
 				// Apply late move reductions if the conditions are met.
 				if (!inCheck &&
-					moves.GetMoveGenerationState() >= MoveGenerationState_QuietMoves &&
-					moveCount >= 3 &&
+					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves &&
+					moveCount >= 4 &&
 					depth >= 3 * OnePly)
 				{
 					newDepth = depth - (2 * OnePly);
@@ -870,7 +871,8 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 			if (newDepth <= 0)
 			{
-				 value = -QSearch(position, searchInfo, -beta, 1 - beta, 0);
+				ASSERT(!isChecking);
+				value = -QSearch(position, searchInfo, -beta, 1 - beta, 0);
 			}
 			else
 			{
