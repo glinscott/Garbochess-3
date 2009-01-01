@@ -37,6 +37,18 @@ EVAL_FEATURE(IsolatedPawnEndgame, -20 * EvalFeatureScale);
 EVAL_FEATURE(BishopPairOpening, 50 * EvalFeatureScale);
 EVAL_FEATURE(BishopPairEndgame, 70 * EvalFeatureScale);
 
+// King attack scoring
+EVAL_FEATURE(KingAttackWeightKnight, 20 * EvalFeatureScale);
+EVAL_FEATURE(KingAttackWeightBishop, 20 * EvalFeatureScale);
+EVAL_FEATURE(KingAttackWeightRook, 40 * EvalFeatureScale);
+EVAL_FEATURE(KingAttackWeightQueen, 80 * EvalFeatureScale);
+
+static const int KingAttackWeightScale[16] =
+{
+	0, 0, 128, 192, 224, 240, 248, 252, 254, 255, 256, 256, 256, 256, 256, 256,
+};
+
+
 Bitboard PawnGreaterBitboards[64][2];
 Bitboard PawnGreaterEqualBitboards[64][2];
 Bitboard PawnLessBitboards[64][2];
@@ -213,6 +225,13 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 	const Bitboard us = position.Colors[color];
 	const Bitboard allPieces = position.GetAllPieces();
 
+	const Bitboard kingMoves = GetKingAttacks(position.KingPos[FlipColor(color)]);
+
+	int kingAttacks = 0;
+	int kingAttackWeight = 0;
+
+	// TODO: king attacks by pawns?
+
 	// Knight evaluation
 	Bitboard b = position.Pieces[KNIGHT] & us;
 	while (b)
@@ -220,11 +239,18 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 		const Square square = PopFirstBit(b);
 
 		// Mobility
-		const int mobility = CountBitsSetFew(GetKnightAttacks(square));
+		const Bitboard attacks = GetKnightAttacks(square);
+		const int mobility = CountBitsSetFew(attacks);
 		opening += mobility * KnightMobilityOpening;
 		endgame += mobility * KnightMobilityEndgame;
 		
 		gamePhase += KnightPhaseScale;
+
+		if (attacks & kingMoves)
+		{
+			kingAttacks++;
+			kingAttackWeight += KingAttackWeightKnight;
+		}
 	}
 
 	// Bishop evaluation
@@ -235,12 +261,19 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 		const Square square = PopFirstBit(b);
 
 		// Mobility
-		const int mobility = CountBitsSet(GetBishopAttacks(square, allPieces));
+		const Bitboard attacks = GetBishopAttacks(square, allPieces);
+		const int mobility = CountBitsSet(attacks);
 		opening += mobility * BishopMobilityOpening;
 		endgame += mobility * BishopMobilityEndgame;
 		
 		gamePhase += BishopPhaseScale;
 		bishopCount++;
+
+		if (attacks & kingMoves)
+		{
+			kingAttacks++;
+			kingAttackWeight += KingAttackWeightBishop;
+		}
 	}
 
 	if (bishopCount >= 2)
@@ -256,11 +289,18 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 		const Square square = PopFirstBit(b);
 
 		// Mobility
-		const int mobility = CountBitsSet(GetRookAttacks(square, allPieces));
+		const Bitboard attacks = GetRookAttacks(square, allPieces);
+		const int mobility = CountBitsSet(attacks);
 		opening += mobility * RookMobilityOpening;
 		endgame += mobility * RookMobilityEndgame;
 		
 		gamePhase += RookPhaseScale;
+
+		if (attacks & kingMoves)
+		{
+			kingAttacks++;
+			kingAttackWeight += KingAttackWeightRook;
+		}
 	}
 
 	// Queen evaluation
@@ -270,12 +310,22 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 		const Square square = PopFirstBit(b);
 
 		// Mobility
-		const int mobility = CountBitsSet(GetQueenAttacks(square, allPieces));
+		const Bitboard attacks = GetQueenAttacks(square, allPieces);
+		const int mobility = CountBitsSet(attacks);
 		opening += mobility * QueenMobilityOpening;
 		endgame += mobility * QueenMobilityEndgame;
 		
 		gamePhase += QueenPhaseScale;
+
+		if (attacks & kingMoves)
+		{
+			kingAttacks++;
+			kingAttackWeight += KingAttackWeightQueen;
+		}
 	}
+
+	// Give ourselves a bonus for how many of our big pieces are attacking the king.  The more the better.
+	opening += (kingAttackWeight * KingAttackWeightScale[kingAttacks]) / 256;
 
 	openingResult += opening * multiplier;
 	endgameResult += endgame * multiplier;
