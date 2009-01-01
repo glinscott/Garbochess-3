@@ -547,7 +547,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 				if (pruneValue <= alpha)
 				{
 					// TODO: should we only do delta pruning in cut/all nodes?
-					value = max(value, pruneValue);
+					value = pruneValue;
 				}
 				else
 				{
@@ -988,7 +988,7 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 		hashMove == 0)
 	{
 		// Try IID
-		SearchPV(position, searchInfo, alpha, beta, min(depth - (2 * OnePly), depth / 2), inCheck);
+		SearchPV(position, searchInfo, alpha, beta, max(OnePly, min(depth - (2 * OnePly), depth / 2)), inCheck);
 
 		// TODO: re-search if < alpha here?  that means we won't have a best move...
 
