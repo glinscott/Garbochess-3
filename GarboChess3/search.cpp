@@ -688,6 +688,17 @@ int QSearchCheck(Position &position, SearchInfo &searchInfo, int alpha, const in
 	return bestScore;
 }
 
+bool CheckElapsedTime()
+{
+	u64 elapsedTime = GetCurrentMilliseconds() - SearchStartTime;
+	if (elapsedTime >= SearchTimeLimit)
+	{
+		return true;
+	}
+
+	return false;
+}
+
 void CheckKillSearch()
 {
 	void ReadCommand();
@@ -697,8 +708,7 @@ void CheckKillSearch()
 		ReadCommand();
 	}
 
-	u64 elapsedTime = GetCurrentMilliseconds() - SearchStartTime;
-	if (elapsedTime >= SearchTimeLimit)
+	if (CheckElapsedTime())
 	{
 		KillSearch = true;
 	}
@@ -1292,6 +1302,12 @@ Move IterativeDeepening(Position &rootPosition, const int maxDepth, int &score, 
 			printf("info depth %d score cp %d nodes %I64d time %I64d nps %I64d pv ", depth, (int)value, nodeCount, msTaken, nps);
 			PrintPV(position, moves[0], depth * 3);
 			printf("\n");
+		}
+
+		// Check timeout here, as sometimes we print too much output without searching enough nodes to run over.
+		if (CheckElapsedTime())
+		{
+			break;
 		}
 	}
 
