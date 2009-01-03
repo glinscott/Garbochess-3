@@ -73,6 +73,9 @@ const int BitTable[64] = {
 	51, 60, 42, 59, 58
 };
 
+Bitboard RowBitboard[8];
+Bitboard ColumnBitboard[8];
+
 Bitboard PawnMoves[2][64];
 Bitboard PawnAttacks[2][64];
 Bitboard KnightAttacks[64];
@@ -152,6 +155,12 @@ void SetIfInBounds(int row, int col, int delta[2], Bitboard &b)
 
 void InitializeBitboards()
 {
+	for (int i = 0; i < 8; i++)
+	{
+		RowBitboard[i] = 0xFFULL << (i * 8);
+		ColumnBitboard[i] = 0x0101010101010101ULL << i;
+	}
+
 	int rookDeltas[4][2] = {{0,1},{0,-1},{1,0},{-1,0}};
 	int bishopDeltas[4][2] = {{1,1},{-1,1},{1,-1},{-1,-1}};
 

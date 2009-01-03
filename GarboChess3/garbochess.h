@@ -267,6 +267,9 @@ inline PieceType GetPromotionMoveType(const Move move)
 // Attack generation
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+extern Bitboard RowBitboard[8];
+extern Bitboard ColumnBitboard[8];
+
 extern Bitboard PawnMoves[2][64];
 extern Bitboard PawnAttacks[2][64];
 extern Bitboard KnightAttacks[64];
