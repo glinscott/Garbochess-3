@@ -873,7 +873,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 					GetPieceType(position.Board[GetTo(move)]) != PAWN &&
 					depth <= 4 * OnePly)
 				{
-					value = evaluation + 100;
+					value = evaluation + 250;
 					if (value < beta)
 					{
 						position.UnmakeMove(move, moveUndo);
