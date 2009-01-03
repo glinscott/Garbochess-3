@@ -759,10 +759,12 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		hashMove = 0;
 	}
 	
+	int evaluation;
+
 	if (!inCheck)
 	{
 		EvalInfo evalInfo;
-		const int evaluation = Evaluate(position, evalInfo);
+		evaluation = Evaluate(position, evalInfo);
 
 		int razorEval = evaluation + 125;
 		if (razorEval < beta)
@@ -865,6 +867,26 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 			}
 			else
 			{
+				// Try futility pruning
+				if (!inCheck &&
+					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves &&
+					GetPieceType(position.Board[GetTo(move)]) != PAWN &&
+					depth <= 4 * OnePly)
+				{
+					value = evaluation + 100;
+					if (value < beta)
+					{
+						position.UnmakeMove(move, moveUndo);
+			
+						if (value > bestScore)
+						{
+							bestScore = value;
+							hashMove = move;
+						}
+						continue;
+					}
+				}
+
 				// Apply late move reductions if the conditions are met.
 				if (!inCheck &&
 					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves &&
@@ -891,7 +913,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 			if (newDepth == depth - (2 * OnePly) && value >= beta)
 			{
-				// Re-search
+				// Re-search if the reduced move actually has the potential to be a good move.
 				ASSERT(!isChecking);
 				ASSERT(!inCheck);
 
