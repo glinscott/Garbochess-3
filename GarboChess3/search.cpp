@@ -942,7 +942,8 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 					const Square to = GetTo(move);
 					if (position.Board[to] == PIECE_NONE)
 					{
-						if (move != searchInfo.Killers[normalizedDepth][0])
+						if (move != searchInfo.Killers[normalizedDepth][0] &&
+							GetMoveType(move) != MoveTypePromotion)
 						{
 							searchInfo.Killers[normalizedDepth][1] = searchInfo.Killers[normalizedDepth][0];
 							searchInfo.Killers[normalizedDepth][0] = move;
@@ -1112,8 +1113,9 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 						// TODO: update history
 						StoreHash(position.Hash, value, move, depth, HashFlagsBeta);
 
-						// Update killers (only for non-captures)
+						// Update killers (only for non-captures/promotions)
 						if (position.Board[GetTo(move)] == PIECE_NONE &&
+							GetMoveType(move) != MoveTypePromotion &&
 							move != searchInfo.Killers[depth][0])
 						{
 							searchInfo.Killers[depth][1] = searchInfo.Killers[depth][0];
