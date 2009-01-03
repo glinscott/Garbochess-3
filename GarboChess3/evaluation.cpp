@@ -42,6 +42,8 @@ EVAL_FEATURE(DoubledPawnOpening, -10 * EvalFeatureScale);
 EVAL_FEATURE(DoubledPawnEndgame, -20 * EvalFeatureScale);
 EVAL_FEATURE(IsolatedPawnOpening, -10 * EvalFeatureScale);
 EVAL_FEATURE(IsolatedPawnEndgame, -20 * EvalFeatureScale);
+EVAL_FEATURE(BackwardPawnOpening, -8 * EvalFeatureScale);
+EVAL_FEATURE(BackwardPawnEndgame, -10 * EvalFeatureScale);
 
 // Material scoring
 EVAL_FEATURE(BishopPairOpening, 50 * EvalFeatureScale);
@@ -55,9 +57,8 @@ EVAL_FEATURE(KingAttackWeightQueen, 80 * EvalFeatureScale);
 
 static const int KingAttackWeightScale[16] =
 {
-	0, 0, 128, 192, 224, 240, 248, 252, 254, 255, 256, 256, 256, 256, 256, 256,
+	0, 16, 128, 192, 224, 240, 248, 252, 254, 255, 256, 256, 256, 256, 256, 256,
 };
-
 
 Bitboard PawnGreaterBitboards[64][2];
 Bitboard PawnGreaterEqualBitboards[64][2];
@@ -146,6 +147,7 @@ struct PawnHashInfo
 	u64 Lock;
 	int Opening;
 	int Endgame;
+	int Kingside[2], Center[2], Queenside[2];
 	u8 Passed[2];
 };
 
@@ -153,15 +155,33 @@ struct PawnHashInfo
 const int PawnHashMask = (1 << 10) - 1;
 PawnHashInfo PawnHash[PawnHashMask + 1];
 
+template<Color color>
+int GetMultiplier()
+{
+	return color == WHITE ? 1 : -1;
+}
+
+int GetMultiplier(Color color)
+{
+	return color == WHITE ? GetMultiplier<WHITE>() : GetMultiplier<BLACK>();
+}
+
 int RowScoreScale(const int scoreMin, const int scoreMax, const int row)
 {
 	return scoreMin + ((scoreMax - scoreMin) * RowScoreMultiplier[row] + 128) / 256;
 }
 
 template<Color color>
-inline int PawnRow(int row)
+inline int PawnRow(const int row)
 {
 	return color == WHITE ? row : 7 - row;
+}
+
+inline int ShelterPenalty(const int row)
+{
+	const int inverted = 7 - row;
+	ASSERT(inverted >= 0 && inverted <= 6);
+	return inverted * inverted;
 }
 
 template<Color color, int multiplier>
@@ -174,6 +194,12 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 	const Bitboard ourPawns = allPawns & ourPieces;
 
 	pawnScores.Passed[color] = 0;
+
+	int shelter[8];
+	for (int i = 0; i < 8; i++)
+	{
+		shelter[i] = ShelterPenalty(RANK_7);
+	}
 
 	Bitboard b = ourPawns;
 	while (b)
@@ -194,6 +220,8 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 			pawnScores.Opening += multiplier * IsolatedPawnOpening;
 			pawnScores.Endgame += multiplier * IsolatedPawnEndgame;
 		}
+
+		// TODO: Backward pawns
 
 		if ((PawnGreaterBitboards[square][color] & allPawns) == 0)
 		{
@@ -221,7 +249,22 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 				}
 			}
 		}
+
+		if ((PawnLessBitboards[square][color] & ourPawns) == 0)
+		{
+			// Pawn shelter pawn, as its the closest to our home rank
+			shelter[GetColumn(square)] = ShelterPenalty(row);
+		}
 	}
+
+	// Kingside pawn shelter
+	pawnScores.Kingside[color] = shelter[FILE_F] + (shelter[FILE_G] * 2) + shelter[FILE_H];
+
+	// Center pawn shelter
+	pawnScores.Center[color] = shelter[FILE_C] / 2 + (shelter[FILE_D] * 3 / 2) + (shelter[FILE_E] * 2) + shelter[FILE_F];
+
+	// Queenside pawn shelter
+	pawnScores.Queenside[color] = shelter[FILE_A] / 2 + shelter[FILE_B] + (shelter[FILE_C] * 2) + shelter[FILE_D];
 }
 
 void ProbePawnHash(const Position &position, PawnHashInfo *&pawnScores)
@@ -439,8 +482,28 @@ int Evaluate(const Position &position, EvalInfo &evalInfo)
 	// Passed pawns, using king relative terms
 	EvalPassed<WHITE, 1>(position, pawnScores->Passed[WHITE], evalInfo.GamePhase[BLACK], endgame);
 	EvalPassed<BLACK, -1>(position, pawnScores->Passed[BLACK], evalInfo.GamePhase[WHITE], endgame);
-	
-	// TODO: evaluated passed pawns relative to kings -> possibly king shelter as well
+
+	// Score pawn shelter
+	for (Color color = WHITE; color <= BLACK; color++)
+	{
+		const int kingColumn = GetColumn(position.KingPos[color]);
+		int penalty = kingColumn < FILE_D ? pawnScores->Queenside[color] : (kingColumn > FILE_E ? pawnScores->Kingside[color] : pawnScores->Center[color]);
+
+		int castlePenalty = penalty;
+		int castleFlags = color == WHITE ? position.CastleFlags : position.CastleFlags >> 2;
+
+		if (castleFlags & CastleFlagWhiteKing)
+		{
+			castlePenalty = min(castlePenalty, pawnScores->Kingside[color]);
+		}
+
+		if (castleFlags & CastleFlagWhiteQueen)
+		{
+			castlePenalty = min(castlePenalty, pawnScores->Queenside[color]);
+		}
+
+		opening -= GetMultiplier(color) * ((penalty + castlePenalty) / 2) * EvalFeatureScale;
+	}
 
 	// TODO: tempo bonus?
 
