@@ -1,6 +1,8 @@
 #include "garbochess.h"
 #include "position.h"
+#include "movegen.h"
 #include "evaluation.h"
+#include "search.h"
 
 const int EvalFeatureScale = 32;
 
@@ -27,6 +29,9 @@ EVAL_FEATURE(PassedPawnOpeningMin, 10 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnOpeningMax, 70 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnEndgameMin, 20 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnEndgameMax, 140 * EvalFeatureScale);
+EVAL_FEATURE(PassedPawnPushEndgame, 50 * EvalFeatureScale);
+EVAL_FEATURE(PassedPawnFriendlyKingDistanceEndgame, 5 * EvalFeatureScale);
+EVAL_FEATURE(PassedPawnEnemyKingDistanceEndgame, 20 * EvalFeatureScale);
 
 EVAL_FEATURE(CandidatePawnOpeningMin, 5 * EvalFeatureScale);
 EVAL_FEATURE(CandidatePawnOpeningMax, 55 * EvalFeatureScale);
@@ -153,6 +158,12 @@ int RowScoreScale(const int scoreMin, const int scoreMax, const int row)
 	return scoreMin + ((scoreMax - scoreMin) * RowScoreMultiplier[row] + 128) / 256;
 }
 
+template<Color color>
+inline int PawnRow(int row)
+{
+	return color == WHITE ? row : 7 - row;
+}
+
 template<Color color, int multiplier>
 void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 {
@@ -168,7 +179,7 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 	while (b)
 	{
 		const Square square = PopFirstBit(b);
-		const int row = color == WHITE ? GetRow(square) : GetRow(FlipSquare(square));
+		const int row = PawnRow<color>(GetRow(square));
 
 		if ((PawnGreaterBitboards[square][color] & ourPawns) != 0)
 		{
@@ -190,12 +201,9 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 			if (blockingPawns == 0)
 			{
 				// Passed pawn
-				pawnScores.Passed[color] |= GetColumn(square);
+				pawnScores.Passed[color] |= 1 << GetColumn(square);
 
 				pawnScores.Opening += multiplier * RowScoreScale(PassedPawnOpeningMin, PassedPawnOpeningMax, row);
-
-				// TODO: much enhancement needed here - king distance, unstoppable, see > 0 mover...
-				pawnScores.Endgame += multiplier * RowScoreScale(PassedPawnEndgameMin, PassedPawnEndgameMax, row);
 			}
 			else
 			{
@@ -349,6 +357,56 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 	endgameResult += endgame * multiplier;
 }
 
+inline int GetKingDistance(const int from, const int to)
+{
+	return max(abs(GetColumn(from) - GetColumn(to)), abs(GetRow(from) - GetRow(to)));
+}
+
+template<Color color, int multiplier>
+void EvalPassed(const Position &position, u8 passedFiles, int oppGamePhase, int &endgameResult)
+{
+	const Bitboard ourPawns = position.Pieces[PAWN] & position.Colors[color];
+	const Bitboard theirPawns = position.Pieces[PAWN] & position.Colors[FlipColor(color)];
+
+	while (passedFiles)
+	{
+		const int column = GetFirstBitIndex(passedFiles);
+		passedFiles &= passedFiles - 1;
+		
+		Bitboard pawns = ColumnBitboard[column] & ourPawns;
+		ASSERT(pawns != 0);
+
+		while (pawns)
+		{
+			const Square square = PopFirstBit(pawns);
+			if ((PawnGreaterBitboards[square][color] & ourPawns) == 0)
+			{
+				const int row = PawnRow<color>(GetRow(square));
+
+				int scoreMax = PassedPawnEndgameMax;
+				const Square pushSquare = GetFirstBitIndex(GetPawnMoves(square, color));
+
+				if (oppGamePhase == 0)
+				{
+					// No pieces left, unstoppable bonus possible
+					// TODO
+				}
+				else if (position.Board[pushSquare] == PIECE_NONE &&
+					FastSee(position, GenerateMove(square, pushSquare), color))
+				{
+					// Can we safely push the pawn?
+					scoreMax += PassedPawnPushEndgame;
+				}
+
+				scoreMax -= GetKingDistance(position.KingPos[color], pushSquare) * PassedPawnFriendlyKingDistanceEndgame;
+				scoreMax += GetKingDistance(position.KingPos[FlipColor(color)], pushSquare) * PassedPawnEnemyKingDistanceEndgame;
+
+				endgameResult += multiplier * RowScoreScale(PassedPawnEndgameMin, scoreMax, row);
+			}
+		}
+	}
+}
+
 int Evaluate(const Position &position, EvalInfo &evalInfo)
 {
 	// TODO: Lazy evaluation?
@@ -378,6 +436,10 @@ int Evaluate(const Position &position, EvalInfo &evalInfo)
 	opening += pawnScores->Opening;
 	endgame += pawnScores->Endgame;
 
+	// Passed pawns, using king relative terms
+	EvalPassed<WHITE, 1>(position, pawnScores->Passed[WHITE], evalInfo.GamePhase[BLACK], endgame);
+	EvalPassed<BLACK, -1>(position, pawnScores->Passed[BLACK], evalInfo.GamePhase[WHITE], endgame);
+	
 	// TODO: evaluated passed pawns relative to kings -> possibly king shelter as well
 
 	// TODO: tempo bonus?
