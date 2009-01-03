@@ -513,7 +513,8 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 		}
 	}
 
-	const int optimisticValue = eval + 100;
+	const int originalAlpha = alpha;
+	const int optimisticValue = eval + 150;
 
 	MoveSorter<64> moves(position);
 	moves.GenerateCaptures();
@@ -543,7 +544,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 			}
 			else
 			{
-				if (pruneValue <= alpha)
+				if (pruneValue <= originalAlpha)
 				{
 					// TODO: should we only do delta pruning in cut/all nodes?
 					value = pruneValue;
