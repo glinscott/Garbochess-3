@@ -834,33 +834,50 @@ bool IsMovePseudoLegal(const Position &position, const Move move)
 		// Verify that the given piece type can actually make it to the the target square
 		switch (GetPieceType(piece))
 		{
+		case PAWN: break;
 		case KNIGHT: return IsBitSet(GetKnightAttacks(from), to);
 		case BISHOP: return IsBitSet(GetBishopAttacks(from, position.GetAllPieces()), to);
 		case ROOK: return IsBitSet(GetRookAttacks(from, position.GetAllPieces()), to);
 		case QUEEN: return IsBitSet(GetBishopAttacks(from, position.GetAllPieces()) | GetRookAttacks(from, position.GetAllPieces()), to);
 		case KING: return IsBitSet(GetKingAttacks(from), to);
+		default: return false;
 		}
 	}
 
-	if (moveType == MoveTypeNone ||
-		moveType == MoveTypePromotion)
+	if (moveType == MoveTypeNone)
+	{
+		if (position.Board[to] == PIECE_NONE)
+		{
+			// Single pawn moves
+			if (IsBitSet(GetPawnMoves(from, us) & ~(RowBitboard[RANK_1] | RowBitboard[RANK_8]), to))
+			{
+				return true;
+			}
+
+			// Double pawn push, intermediate square and final square must be
+			// empty, and we must be moving up two squares
+			const Square nextSquare = GetFirstBitIndex(GetPawnMoves(from, us));
+			if (position.Board[nextSquare] == PIECE_NONE &&
+				IsBitSet(GetPawnMoves(nextSquare, us), to) &&
+				((us == WHITE && GetRow(from) == RANK_2) || (us == BLACK && GetRow(from) == RANK_7)))
+			{
+				return true;
+			}
+		}
+		else
+		{
+			// Has to be a pawn capture
+			return IsBitSet(GetPawnAttacks(from, us) & ~(RowBitboard[RANK_1] | RowBitboard[RANK_8]), to);
+		}
+	}
+	else if (moveType == MoveTypePromotion)
 	{
 		if (GetPieceType(piece) == PAWN)
 		{
 			if (position.Board[to] == PIECE_NONE)
 			{
-				// Single pawn moves
-				if (IsBitSet(GetPawnMoves(from, us), to))
-				{
-					return true;
-				}
-
-				// Double pawn push, intermediate square and final square must be
-				// empty, and we must be moving up two squares
-				const Square nextSquare = GetFirstBitIndex(GetPawnMoves(from, us));
-				if (position.Board[nextSquare] == PIECE_NONE &&
-					IsBitSet(GetPawnMoves(nextSquare, us), to) &&
-					((us == WHITE && GetRow(from) == RANK_2) || (us == BLACK && GetRow(from) == RANK_7)))
+				// Single pawn promotions
+				if (IsBitSet(GetPawnMoves(from, us) & (RowBitboard[RANK_1] | RowBitboard[RANK_8]), to))
 				{
 					return true;
 				}
@@ -868,7 +885,7 @@ bool IsMovePseudoLegal(const Position &position, const Move move)
 			else
 			{
 				// Has to be a pawn capture
-				return IsBitSet(GetPawnAttacks(from, us), to);
+				return IsBitSet(GetPawnAttacks(from, us) & (RowBitboard[RANK_1] | RowBitboard[RANK_8]), to);
 			}
 		}
 	}
