@@ -24,12 +24,11 @@ const int DrawScore = 0;
 static const int seePieceValues[8] = { 0, 1, 3, 3, 5, 10, 10000, 0 };
 
 // This version of SEE does not calculate the exact material imbalance, it just returns true = winning or equal, false = losing
-bool FastSee(const Position &position, const Move move)
+bool FastSee(const Position &position, const Move move, const Color us)
 {
 	const Square from = GetFrom(move);
 	const Square to = GetTo(move);
 
-	const Color us = position.ToMove;
 	const Color them = FlipColor(us);
 
 	ASSERT(position.Board[from] != PIECE_NONE);
@@ -373,7 +372,7 @@ public:
 
 				// Losing captures go off to the back of the list, winning/equal get returned.  They will
 				// have been scored correctly already.
-				if (FastSee(position, bestMove))
+				if (FastSee(position, bestMove, position.ToMove))
 				{
 					return bestMove;
 				}
@@ -522,7 +521,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 	Move move;
 	while ((move = moves.NextQMove()) != 0)
 	{
-		if (depth <= 0 && !FastSee(position, move))
+		if (depth <= 0 && !FastSee(position, move, position.ToMove))
 		{
 			// TODO: we are excluding losing checks here as well - is this safe?
 			continue;
@@ -586,7 +585,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 
 	while ((move = moves.NextQMove()) != 0)
 	{
-		if (depth <= 0 && !FastSee(position, move))
+		if (depth <= 0 && !FastSee(position, move, position.ToMove))
 		{
 			continue;
 		}

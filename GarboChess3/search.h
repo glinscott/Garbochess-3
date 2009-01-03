@@ -16,7 +16,7 @@ struct SearchInfo
 extern bool KillSearch;
 
 SearchInfo &GetSearchInfo(int thread);
-bool FastSee(const Position &position, const Move move);
+bool FastSee(const Position &position, const Move move, const Color us);
 int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int beta, const int depth);
 int QSearchCheck(Position &position, SearchInfo &searchInfo, int alpha, const int beta, const int depth);
 Move IterativeDeepening(Position &position, const int maxDepth, int &score, s64 searchTime, bool printSearchInfo);
