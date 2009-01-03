@@ -167,7 +167,7 @@ void ReadCommand()
 			movetime = time;
 			if (inc != -1) movetime += inc * 30;
 			movetime = max(0, (movetime / 30) - 50);
-			movetime = min(movetime, (wtime + winc) - 50);
+			movetime = min(movetime, (time + inc) - 50);
 		}
 
 		// Begin the search
@@ -211,17 +211,21 @@ int main()
 	Position::StaticInitialize();
 	InitializeEvaluation();
 	InitializeSearch();
-	InitializeHash(16000000);
+	InitializeHash(129000000);
 
 //	RunTests();
 
 	RunEngine();
 
-/*	Position position;
-	position.Initialize("6k1/2bq3p/3p1p1B/2nPpNp1/rRQ1P3/5P1P/6PK/8 b - - 12 51");
-	int score;
-	Move move = IterativeDeepening(position, 12, score, -1, true);
-	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);*/
+	Position position;
+//	position.Initialize("r5k1/1p2bN1p/1PP3n1/5R1N/8/5BP1/4QPKP/q1q5 b - - 0 1");
+//	position.Initialize("r5k1/4bN1p/1Pp3n1/5R1N/8/5BPK/4QP1P/q1q5 b - - 0 2");
+//	position.Initialize("r5k1/4bR1p/1Pp5/4N2N/8/6PK/5PBP/3q4 w - - 0 6");
+	position.Initialize("4rk2/p1p2p2/2Rb1Bp1/1r1p4/3P2P1/1P2P3/P1R2K2/8 b - - 8 53");
+	EvalInfo evalInfo;
+	int score = Evaluate(position, evalInfo);
+	Move move = IterativeDeepening(position, 99, score, -1, true);
+	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);
 
 	return 0;
 }
