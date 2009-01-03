@@ -28,6 +28,11 @@ EVAL_FEATURE(PassedPawnOpeningMax, 70 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnEndgameMin, 20 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnEndgameMax, 140 * EvalFeatureScale);
 
+EVAL_FEATURE(CandidatePawnOpeningMin, 5 * EvalFeatureScale);
+EVAL_FEATURE(CandidatePawnOpeningMax, 55 * EvalFeatureScale);
+EVAL_FEATURE(CandidatePawnEndgameMin, 10 * EvalFeatureScale);
+EVAL_FEATURE(CandidatePawnEndgameMax, 110 * EvalFeatureScale);
+
 EVAL_FEATURE(DoubledPawnOpening, -10 * EvalFeatureScale);
 EVAL_FEATURE(DoubledPawnEndgame, -20 * EvalFeatureScale);
 EVAL_FEATURE(IsolatedPawnOpening, -10 * EvalFeatureScale);
@@ -151,9 +156,10 @@ int RowScoreScale(const int scoreMin, const int scoreMax, const int row)
 template<Color color, int multiplier>
 void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 {
+	const Color them = FlipColor(color);
 	const Bitboard ourPieces = position.Colors[color];
 	const Bitboard allPawns = position.Pieces[PAWN];
-	const Bitboard theirPawns = allPawns & position.Colors[FlipColor(color)];
+	const Bitboard theirPawns = allPawns & position.Colors[them];
 	const Bitboard ourPawns = allPawns & ourPieces;
 
 	pawnScores.Passed[color] = 0;
@@ -180,7 +186,8 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 
 		if ((PawnGreaterBitboards[square][color] & allPawns) == 0)
 		{
-			if ((PassedPawnBitboards[square][color] & theirPawns) == 0)
+			const Bitboard blockingPawns = PassedPawnBitboards[square][color] & theirPawns;
+			if (blockingPawns == 0)
 			{
 				// Passed pawn
 				pawnScores.Passed[color] |= GetColumn(square);
@@ -193,6 +200,17 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 			else
 			{
 				// Candidate passer
+				int count = CountBitsSetFew(blockingPawns);
+				const Bitboard supportingPawns = PassedPawnBitboards[square][them] & ~PawnLessBitboards[square][color] & ourPawns;
+				if (count <= CountBitsSetFew(supportingPawns))
+				{
+					// Potential candidate.  Now, check if it is being attacked
+					if (CountBitsSetFew(GetPawnAttacks(square, them) & ourPawns) - CountBitsSetFew(GetPawnAttacks(square, color) & theirPawns) >= 0)
+					{
+						pawnScores.Opening += multiplier * RowScoreScale(CandidatePawnOpeningMin, CandidatePawnOpeningMax, row);
+						pawnScores.Endgame += multiplier * RowScoreScale(CandidatePawnEndgameMin, CandidatePawnEndgameMax, row);
+					}
+				}
 			}
 		}
 	}
@@ -240,7 +258,7 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 
 		// Mobility
 		const Bitboard attacks = GetKnightAttacks(square);
-		const int mobility = CountBitsSetFew(attacks);
+		const int mobility = CountBitsSetFew(attacks) - 4;
 		opening += mobility * KnightMobilityOpening;
 		endgame += mobility * KnightMobilityEndgame;
 		
@@ -262,7 +280,7 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 
 		// Mobility
 		const Bitboard attacks = GetBishopAttacks(square, allPieces);
-		const int mobility = CountBitsSet(attacks);
+		const int mobility = CountBitsSet(attacks) - 6;
 		opening += mobility * BishopMobilityOpening;
 		endgame += mobility * BishopMobilityEndgame;
 		
@@ -290,7 +308,7 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 
 		// Mobility
 		const Bitboard attacks = GetRookAttacks(square, allPieces);
-		const int mobility = CountBitsSet(attacks);
+		const int mobility = CountBitsSet(attacks) - 7;
 		opening += mobility * RookMobilityOpening;
 		endgame += mobility * RookMobilityEndgame;
 		
@@ -311,7 +329,7 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 
 		// Mobility
 		const Bitboard attacks = GetQueenAttacks(square, allPieces);
-		const int mobility = CountBitsSet(attacks);
+		const int mobility = CountBitsSet(attacks) - 13;
 		opening += mobility * QueenMobilityOpening;
 		endgame += mobility * QueenMobilityEndgame;
 		
