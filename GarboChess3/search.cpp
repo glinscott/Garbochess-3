@@ -514,7 +514,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 	}
 
 	const int originalAlpha = alpha;
-	const int optimisticValue = eval + 150;
+	const int optimisticValue = eval + 100;
 
 	MoveSorter<64> moves(position);
 	moves.GenerateCaptures();
@@ -831,7 +831,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 	bool singular = false;
 	if (!inCheck)
 	{
-		moves.InitializeNormalMoves(hashMove, searchInfo.Killers[depth][0], searchInfo.Killers[depth][1]);
+		moves.InitializeNormalMoves(hashMove, searchInfo.Killers[depth / OnePly][0], searchInfo.Killers[depth / OnePly][1]);
 	}
 	else
 	{
@@ -873,7 +873,14 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 					GetPieceType(position.Board[GetTo(move)]) != PAWN &&
 					depth <= 4 * OnePly)
 				{
-					value = evaluation + 250;
+					if (depth <= OnePly * 2)
+					{
+						value = evaluation + 100;
+					}
+					else 
+					{
+						value = evaluation + 250;
+					}
 					if (value < beta)
 					{
 						position.UnmakeMove(move, moveUndo);
@@ -1043,7 +1050,7 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 
 	if (!inCheck)
 	{
-		moves.InitializeNormalMoves(hashMove, searchInfo.Killers[depth][0], searchInfo.Killers[depth][1]);
+		moves.InitializeNormalMoves(hashMove, searchInfo.Killers[depth / OnePly][0], searchInfo.Killers[depth / OnePly][1]);
 	}
 	else
 	{
@@ -1113,13 +1120,14 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 						// TODO: update history
 						StoreHash(position.Hash, value, move, depth, HashFlagsBeta);
 
+						const int normalizedDepth = depth / OnePly;
 						// Update killers (only for non-captures/promotions)
 						if (position.Board[GetTo(move)] == PIECE_NONE &&
 							GetMoveType(move) != MoveTypePromotion &&
-							move != searchInfo.Killers[depth][0])
+							move != searchInfo.Killers[normalizedDepth][0])
 						{
-							searchInfo.Killers[depth][1] = searchInfo.Killers[depth][0];
-							searchInfo.Killers[depth][0] = move;
+							searchInfo.Killers[normalizedDepth][1] = searchInfo.Killers[normalizedDepth][0];
+							searchInfo.Killers[normalizedDepth][0] = move;
 						}
 
 						return value;
