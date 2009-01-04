@@ -24,6 +24,9 @@ EVAL_FEATURE(RookMobilityEndgame, 4 * EvalFeatureScale);
 EVAL_FEATURE(QueenMobilityOpening, 1 * EvalFeatureScale);
 EVAL_FEATURE(QueenMobilityEndgame, 2 * EvalFeatureScale);
 
+EVAL_FEATURE(RookSemiOpenFile, 10 * EvalFeatureScale);
+EVAL_FEATURE(RookOpenFile, 10 * EvalFeatureScale);
+
 // Pawn features
 EVAL_FEATURE(PassedPawnOpeningMin, 10 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnOpeningMax, 70 * EvalFeatureScale);
@@ -369,6 +372,21 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 		{
 			kingAttacks++;
 			kingAttackWeight += KingAttackWeightRook;
+		}
+
+		// Open file
+		const Bitboard pawnFile = ColumnBitboard[GetColumn(square)] & position.Pieces[PAWN];
+		opening -= (RookSemiOpenFile + RookOpenFile) / 2;
+		endgame -= (RookSemiOpenFile + RookOpenFile) / 2;
+		if ((pawnFile & us) == 0)
+		{
+			opening += RookSemiOpenFile;
+			endgame += RookSemiOpenFile;
+			if (pawnFile == 0)
+			{
+				opening += RookOpenFile;
+				endgame += RookOpenFile;
+			}
 		}
 	}
 
