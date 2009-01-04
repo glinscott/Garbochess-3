@@ -701,15 +701,26 @@ void Position::VerifyBoard() const
 			const PieceType pieceType = GetPieceType(Board[i]);
 			const Color color = GetPieceColor(Board[i]);
 
+			for (int j = PAWN; j <= QUEEN; j++)
+			{
+				if (pieceType == j)
+				{
+					ASSERT(IsBitSet(Pieces[j], i));
+				}
+				else
+				{
+					ASSERT(!IsBitSet(Pieces[j], i));
+				}
+			}
+
 			if (pieceType == PIECE_NONE)
 			{
-				ASSERT(!IsBitSet(Pieces[pieceType], i));
 				ASSERT(!IsBitSet(GetAllPieces(), i));
 			}
 			else
 			{
-				ASSERT(IsBitSet(Pieces[pieceType], i));
 				ASSERT(IsBitSet(Colors[color], i));
+				ASSERT(!IsBitSet(Colors[FlipColor(color)], i));
 
 				if (pieceType == KING)
 				{
