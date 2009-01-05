@@ -6,7 +6,7 @@ int PsqTableOpening[16][64];
 int PsqTableEndgame[16][64];
 
 // Material weights (in centipawns, which are directly used by the evaluation value)
-EVAL_FEATURE(PawnOpening,   75);
+EVAL_FEATURE(PawnOpening,   80);
 EVAL_FEATURE(PawnEndgame,   90);
 EVAL_FEATURE(KnightOpening, 325);
 EVAL_FEATURE(KnightEndgame, 320);
