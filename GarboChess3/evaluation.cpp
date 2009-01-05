@@ -32,9 +32,10 @@ EVAL_FEATURE(PassedPawnOpeningMin, 10 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnOpeningMax, 70 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnEndgameMin, 20 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnEndgameMax, 140 * EvalFeatureScale);
-EVAL_FEATURE(PassedPawnPushEndgame, 50 * EvalFeatureScale);
+EVAL_FEATURE(PassedPawnPushEndgame, 60 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnFriendlyKingDistanceEndgame, 5 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnEnemyKingDistanceEndgame, 20 * EvalFeatureScale);
+EVAL_FEATURE(UnstoppablePawnEndgame, 600 * EvalFeatureScale);
 
 EVAL_FEATURE(CandidatePawnOpeningMin, 5 * EvalFeatureScale);
 EVAL_FEATURE(CandidatePawnOpeningMax, 55 * EvalFeatureScale);
@@ -44,8 +45,10 @@ EVAL_FEATURE(CandidatePawnEndgameMax, 110 * EvalFeatureScale);
 EVAL_FEATURE(DoubledPawnOpening, -10 * EvalFeatureScale);
 EVAL_FEATURE(DoubledPawnEndgame, -20 * EvalFeatureScale);
 EVAL_FEATURE(IsolatedPawnOpening, -10 * EvalFeatureScale);
+EVAL_FEATURE(IsolatedOpenFilePawnOpening, -20 * EvalFeatureScale);
 EVAL_FEATURE(IsolatedPawnEndgame, -20 * EvalFeatureScale);
 EVAL_FEATURE(BackwardPawnOpening, -8 * EvalFeatureScale);
+EVAL_FEATURE(BackwardOpenFilePawnOpening, -16 * EvalFeatureScale);
 EVAL_FEATURE(BackwardPawnEndgame, -10 * EvalFeatureScale);
 
 // Material scoring
@@ -209,25 +212,14 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 	{
 		const Square square = PopFirstBit(b);
 		const int row = PawnRow<color>(GetRow(square));
+		const Square pushSquare = GetFirstBitIndex(GetPawnMoves(square, color));
 
-		if ((PawnGreaterBitboards[square][color] & ourPawns) != 0)
-		{
-			// Doubled pawn
-			pawnScores.Opening += multiplier * DoubledPawnOpening;
-			pawnScores.Endgame += multiplier * DoubledPawnEndgame;
-		}
-
-		if ((IsolatedPawnBitboards[square] & ourPawns) == 0)
-		{
-			// Isolated
-			pawnScores.Opening += multiplier * IsolatedPawnOpening;
-			pawnScores.Endgame += multiplier * IsolatedPawnEndgame;
-		}
-
-		// TODO: Backward pawns
+		bool openFile = false;
 
 		if ((PawnGreaterBitboards[square][color] & allPawns) == 0)
 		{
+			openFile = true;
+
 			const Bitboard blockingPawns = PassedPawnBitboards[square][color] & theirPawns;
 			if (blockingPawns == 0)
 			{
@@ -240,7 +232,7 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 			{
 				// Candidate passer
 				int count = CountBitsSetFew(blockingPawns);
-				const Bitboard supportingPawns = PassedPawnBitboards[square][them] & ~PawnLessBitboards[square][color] & ourPawns;
+				const Bitboard supportingPawns = PassedPawnBitboards[pushSquare][them] & ~PawnLessBitboards[pushSquare][color] & ourPawns;
 				if (count <= CountBitsSetFew(supportingPawns))
 				{
 					// Potential candidate.  Now, check if it is being attacked
@@ -250,6 +242,33 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 						pawnScores.Endgame += multiplier * RowScoreScale(CandidatePawnEndgameMin, CandidatePawnEndgameMax, row);
 					}
 				}
+			}
+		}
+
+		if ((PawnGreaterBitboards[square][color] & ourPawns) != 0)
+		{
+			// Doubled pawn
+			pawnScores.Opening += multiplier * DoubledPawnOpening;
+			pawnScores.Endgame += multiplier * DoubledPawnEndgame;
+		}
+
+		if ((IsolatedPawnBitboards[square] & ourPawns) == 0)
+		{
+			// Isolated
+			pawnScores.Opening += multiplier * (openFile ? IsolatedOpenFilePawnOpening : IsolatedPawnOpening);
+			pawnScores.Endgame += multiplier * IsolatedPawnEndgame;
+		}
+
+		// Backward pawns
+		Bitboard supportingPawns = PassedPawnBitboards[pushSquare][them] & ourPawns;
+		XorClearBit(supportingPawns, square);
+		if (supportingPawns == 0)
+		{
+			// Only backward if there is a pawn in a neigboring file ahead of us.
+			if (PassedPawnBitboards[square][color] & ourPawns)
+			{
+				pawnScores.Opening += multiplier * (openFile ? BackwardOpenFilePawnOpening : BackwardPawnOpening);
+				pawnScores.Endgame += multiplier * BackwardPawnEndgame;
 			}
 		}
 
@@ -450,7 +469,15 @@ void EvalPassed(const Position &position, u8 passedFiles, int oppGamePhase, int 
 				if (oppGamePhase == 0)
 				{
 					// No pieces left, unstoppable bonus possible
-					// TODO
+					const int pawnRow = row == RANK_2 ? RANK_3 : row;
+					const Square promotionSquare = MakeSquare(color == WHITE ? RANK_8 : RANK_1, GetColumn(square));
+					int stepsToPromote = GetKingDistance(square, promotionSquare);
+					if (position.ToMove != color) stepsToPromote++;
+
+					if (GetKingDistance(position.KingPos[FlipColor(color)], promotionSquare) > stepsToPromote)
+					{
+						endgameResult += multiplier * UnstoppablePawnEndgame;
+					}
 				}
 				else if (position.Board[pushSquare] == PIECE_NONE &&
 					FastSee(position, GenerateMove(square, pushSquare), color))
