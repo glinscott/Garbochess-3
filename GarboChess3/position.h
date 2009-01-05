@@ -36,6 +36,9 @@ public:
 	std::string GetFen() const;
 	void Clone(Position &other) const;
 
+	// Debug only!
+	void Flip();
+
 	void MakeMove(const Move move, MoveUndo &moveUndo);
 	void UnmakeMove(const Move move, const MoveUndo &moveUndo);
 

@@ -213,6 +213,64 @@ void Position::Clone(Position &other) const
 #endif
 }
 
+void Position::Flip()
+{
+	ToMove = FlipColor(ToMove);
+
+	for (int row = 0; row < 4; row++)
+	{
+		for (int column = 0; column < 8; column++)
+		{
+			const Square square = MakeSquare(row, column);
+			Piece tmpP = Board[square];
+			Board[square] = Board[FlipSquare(square)];
+			Board[FlipSquare(square)] = tmpP;
+		}
+	}
+
+	for (int i = 0; i < 8; i++) Pieces[i] = 0;
+	for (int i = 0; i < 2; i++) Colors[i] = 0;
+
+	for (int row = 0; row < 8; row++)
+	{
+		for (int column = 0; column < 8; column++)
+		{
+			const Square square = MakeSquare(row, column);
+			if (Board[square] != PIECE_NONE)
+			{
+				const Color color = FlipColor(GetPieceColor(Board[square]));
+				const PieceType pieceType = GetPieceType(Board[square]);
+				Board[square] = MakePiece(color, pieceType);
+				SetBit(Colors[color], square);
+				SetBit(Pieces[pieceType], square);
+
+				if (pieceType == KING)
+				{
+					KingPos[color] = square;
+				}
+			}
+		}
+	}
+
+	if (EnPassent != -1)
+	{
+		EnPassent = FlipSquare(EnPassent);
+	}
+
+	int castleTmp = CastleFlags & 0x3;
+	CastleFlags = ((CastleFlags >> 2) & 3) | (castleTmp << 2);
+
+	Hash = GetHash();
+	PawnHash = GetPawnHash();
+
+	PsqEvalOpening = GetPsqEval(0);
+	PsqEvalEndgame = GetPsqEval(1);
+
+#if _DEBUG
+	VerifyBoard();
+#endif
+}
+
 void Position::MakeMove(const Move move, MoveUndo &moveUndo)
 {
 	ASSERT(IsMovePseudoLegal((const Position&)*this, move));

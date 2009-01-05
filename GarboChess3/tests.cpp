@@ -93,9 +93,12 @@ void CheckSee(const std::string &fen, const std::string &move, bool expected)
 	position.Initialize(fen);
 	Move captureMove = MakeMoveFromUciString(position, move);
 	ASSERT(IsMovePseudoLegal(position, captureMove));
-	ASSERT(FastSee(position, captureMove) == expected);
+	ASSERT(FastSee(position, captureMove, position.ToMove) == expected);
 
-	// TODO: implement position.Flip(), and verify that flipped move also gives correct SEE value
+	position.Flip();
+	captureMove = (captureMove & MoveTypeMask) | GenerateMove(FlipSquare(GetFrom(captureMove)), FlipSquare(GetTo(captureMove)));
+	ASSERT(IsMovePseudoLegal(position, captureMove));
+	ASSERT(FastSee(position, captureMove, position.ToMove) == expected);
 }
 
 void SeeTests()
@@ -156,7 +159,7 @@ void SeeTests()
 	CheckSee("K7/5b2/8/3r4/8/3R4/3R4/7k w - - 0 1", "d3d5", true);
 }
 
-void MoveSortingTest()
+void MoveSortingTests()
 {
 	// TODO: test move sorting (might have to factor it a bit better)
 }
@@ -255,6 +258,31 @@ void PawnEvaluationTests()
 {
 	// TODO: a few unit tests on the passed pawn evaluation
 	// TOOD: a few unit tests on the pawn hash mechanism
+	
+	// Great position for testing passed pawns, and king shelter
+	// "2r3k1/1Q1R1pp1/7p/4p1b1/4p1P1/2r1q3/1PK4P/3R4 w - - 14 37"
+}
+
+void EvaluationFlipTests()
+{
+	std::FILE* file;
+//	fopen_s(&file, "tests/wac.epd", "rt");
+	fopen_s(&file, "tests/perftsuite.epd", "rt");
+
+	char line[500];
+	while (std::fgets(line, 500, file) != NULL)
+	{
+		Position position;
+		position.Initialize(line);
+
+		EvalInfo evalInfo1, evalInfo2;
+		int score1 = Evaluate(position, evalInfo1);
+
+		position.Flip();
+		int score2 = Evaluate(position, evalInfo2);
+
+		ASSERT(score1 == score2);
+	}
 }
 
 u64 perft(Position &position, int depth)
@@ -569,8 +597,11 @@ void RunTests()
 
 	UnitTests();
 	SeeTests();
+	MoveSortingTests();
 	DrawTests();
 	HashTests();
+	EvaluationFlipTests();
+	PawnEvaluationTests();
 
 	InitializeHash(16000000);
 
@@ -580,7 +611,7 @@ void RunTests()
 	Move move = IterativeDeepening(position, 12, score, -1, true);
 	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);*/
 
-//	TestSuite(9);
+	TestSuite(9);
 
 /*	u64 startTime = GetCurrentMilliseconds();
 	Position position;
