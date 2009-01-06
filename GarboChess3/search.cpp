@@ -513,7 +513,6 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 		}
 	}
 
-	const int originalAlpha = alpha;
 	const int optimisticValue = eval + 100;
 
 	MoveSorter<64> moves(position);
@@ -544,9 +543,9 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 			}
 			else
 			{
-				if (pruneValue <= originalAlpha)
+				if (pruneValue <= alpha &&
+					alpha == beta - 1)
 				{
-					// TODO: should we only do delta pruning in cut/all nodes?
 					value = pruneValue;
 				}
 				else
@@ -576,7 +575,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 		}
 	}
 
-	if (depth < -(OnePly / 2))
+	if (depth < -6)
 	{
 		// Don't bother searching checking moves
 		return eval;
@@ -758,7 +757,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 	{
 		hashMove = 0;
 	}
-	
+
 	int evaluation;
 
 	if (!inCheck)
@@ -871,7 +870,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 				if (!inCheck &&
 					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves &&
 					GetPieceType(position.Board[GetTo(move)]) != PAWN &&
-					ply <= 4 * OnePly)
+					ply <= 2 * OnePly)
 				{
 					if (ply <= OnePly * 2)
 					{
@@ -881,6 +880,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 					{
 						value = evaluation + 250;
 					}
+
 					if (value < beta)
 					{
 						position.UnmakeMove(move, moveUndo);
@@ -900,7 +900,15 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 					moveCount >= 4 &&
 					ply >= 3 * OnePly)
 				{
-					newPly = ply - (2 * OnePly);
+					if (moveCount >= 25 &&
+						GetPieceType(position.Board[GetTo(move)]) != PAWN)
+					{
+						newPly = ply - ((5 * OnePly) / 2);
+					}
+					else
+					{
+						newPly = ply - (2 * OnePly);
+					}
 				}
 				else
 				{
@@ -918,7 +926,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 				value = -Search(position, searchInfo, 1 - beta, newPly, depthFromRoot + 1, 0, isChecking);
 			}
 
-			if (newPly == ply - (2 * OnePly) && value >= beta)
+			if (newPly <= ply - (2 * OnePly) && value >= beta)
 			{
 				// Re-search if the reduced move actually has the potential to be a good move.
 				ASSERT(!isChecking);
@@ -1310,7 +1318,29 @@ Move IterativeDeepening(Position &rootPosition, const int maxDepth, int &score, 
 		}
 
 		int value = SearchRoot(position, searchInfo, moves, moveScores, moveCount, alpha, beta, depth * OnePly);
+/*
+		if (value > alpha && value < beta)
+		{
+			alpha = value - 50;
+			beta = value + 50;
+		}
+		else
+		{
+			if (value <= alpha && alpha != MinEval)
+			{
+				alpha = MinEval;
+				depth--;
+				continue;
+			}
 
+			if (value >= beta && beta != MaxEval)
+			{
+				beta = MaxEval;
+				depth--;
+				continue;
+			}
+		}
+*/
 		if (KillSearch)
 		{
 			break;
