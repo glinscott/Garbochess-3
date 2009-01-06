@@ -6,7 +6,7 @@ int PsqTableOpening[16][64];
 int PsqTableEndgame[16][64];
 
 // Material weights (in centipawns, which are directly used by the evaluation value)
-EVAL_FEATURE(PawnOpening,   80);
+EVAL_FEATURE(PawnOpening,   70);
 EVAL_FEATURE(PawnEndgame,   90);
 EVAL_FEATURE(KnightOpening, 325);
 EVAL_FEATURE(KnightEndgame, 320);
@@ -21,7 +21,7 @@ EVAL_FEATURE(BishopPairOpening, 50);
 EVAL_FEATURE(BishopPairEndgame, 70);
 
 // Psq weights (in millipawns, all are divided by 10 before being used in the psq-table)
-EVAL_FEATURE(PawnColumnOpening, 45);
+EVAL_FEATURE(PawnColumnOpening, 54);
 EVAL_FEATURE(PawnColumnEndgame, 0);
 EVAL_FEATURE(KnightCenterOpening, 52);
 EVAL_FEATURE(KnightCenterEndgame, 52);
@@ -29,19 +29,19 @@ EVAL_FEATURE(KnightRowOpening, 52);
 EVAL_FEATURE(KnightRowEndgame, 0);
 EVAL_FEATURE(KnightBackRowOpeningPenalty, 5);
 EVAL_FEATURE(BishopCenterOpening, 19);
-EVAL_FEATURE(BishopCenterEndgame, 27);
+EVAL_FEATURE(BishopCenterEndgame, 31);
 EVAL_FEATURE(BishopBackRowOpeningPenalty, 95);
-EVAL_FEATURE(BishopDiagonalOpening, 43);
+EVAL_FEATURE(BishopDiagonalOpening, 41);
 EVAL_FEATURE(RookColumnOpening, 30);
 EVAL_FEATURE(RookColumnEndgame, 0);
-EVAL_FEATURE(QueenCenterOpening, 5);
+EVAL_FEATURE(QueenCenterOpening, 3);
 EVAL_FEATURE(QueenCenterEndgame, 40);
-EVAL_FEATURE(QueenBackRowOpeningPenalty, 45);
+EVAL_FEATURE(QueenBackRowOpeningPenalty, 49);
 EVAL_FEATURE(KingCenterOpening, 0);
 EVAL_FEATURE(KingCenterEndgame, 120);
-EVAL_FEATURE(KingColumnOpening, 95);
+EVAL_FEATURE(KingColumnOpening, 99);
 EVAL_FEATURE(KingColumnEndgame, 0);
-EVAL_FEATURE(KingRowOpening, 95);
+EVAL_FEATURE(KingRowOpening, 97);
 EVAL_FEATURE(KingRowEndgame, 0);
 
 // Feature multipliers - weights from Toga
