@@ -50,23 +50,23 @@ EVAL_FEATURE(DoubledPawnEndgame, -20 * EvalFeatureScale);
 EVAL_FEATURE(IsolatedPawnOpening, -10 * EvalFeatureScale);
 EVAL_FEATURE(IsolatedOpenFilePawnOpening, -20 * EvalFeatureScale);
 EVAL_FEATURE(IsolatedPawnEndgame, -20 * EvalFeatureScale);
-EVAL_FEATURE(BackwardPawnOpening, -8 * EvalFeatureScale);
-EVAL_FEATURE(BackwardOpenFilePawnOpening, -16 * EvalFeatureScale);
-EVAL_FEATURE(BackwardPawnEndgame, -10 * EvalFeatureScale);
+EVAL_FEATURE(BackwardPawnOpening, -6 * EvalFeatureScale);
+EVAL_FEATURE(BackwardOpenFilePawnOpening, -12 * EvalFeatureScale);
+EVAL_FEATURE(BackwardPawnEndgame, -8 * EvalFeatureScale);
 
 // Material scoring
 EVAL_FEATURE(BishopPairOpening, 50 * EvalFeatureScale);
 EVAL_FEATURE(BishopPairEndgame, 70 * EvalFeatureScale);
 
 // King attack scoring
-EVAL_FEATURE(KingAttackWeightKnight, 20 * EvalFeatureScale);
-EVAL_FEATURE(KingAttackWeightBishop, 20 * EvalFeatureScale);
-EVAL_FEATURE(KingAttackWeightRook, 40 * EvalFeatureScale);
-EVAL_FEATURE(KingAttackWeightQueen, 80 * EvalFeatureScale);
+EVAL_FEATURE(KingAttackWeightKnight, 30 * EvalFeatureScale);
+EVAL_FEATURE(KingAttackWeightBishop, 30 * EvalFeatureScale);
+EVAL_FEATURE(KingAttackWeightRook, 60 * EvalFeatureScale);
+EVAL_FEATURE(KingAttackWeightQueen, 120 * EvalFeatureScale);
 
 static const int KingAttackWeightScale[16] =
 {
-	0, 16, 128, 192, 224, 240, 248, 252, 254, 255, 256, 256, 256, 256, 256, 256,
+	0, 24, 136, 210, 232, 246, 252, 253, 254, 255, 256, 256, 256, 256, 256, 256,
 };
 
 Bitboard PawnGreaterBitboards[64][2];
@@ -263,8 +263,8 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 			pawnScores.Endgame += multiplier * IsolatedPawnEndgame;
 		}
 
-		// Backward pawns (TODO)
-/*		Bitboard supportingPawns = PassedPawnBitboards[pushSquare][them] & ourPawns;
+		// Backward pawns
+		Bitboard supportingPawns = PassedPawnBitboards[pushSquare][them] & ourPawns;
 		XorClearBit(supportingPawns, square);
 		if (supportingPawns == 0)
 		{
@@ -274,7 +274,7 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 				pawnScores.Opening += multiplier * (openFile ? BackwardOpenFilePawnOpening : BackwardPawnOpening);
 				pawnScores.Endgame += multiplier * BackwardPawnEndgame;
 			}
-		}*/
+		}
 
 		if ((PawnLessBitboards[square][color] & ourPawns) == 0)
 		{
