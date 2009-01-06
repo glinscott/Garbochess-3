@@ -14,6 +14,9 @@ EVAL_FEATURE(QueenPhaseScale, 4);
 
 EVAL_CONST int gamePhaseMax = (4 * KnightPhaseScale) + (4 * BishopPhaseScale) + (4 * RookPhaseScale) + (2 * QueenPhaseScale);
 
+EVAL_FEATURE(TempoOpening, 20 * EvalFeatureScale);
+EVAL_FEATURE(TempoEndgame, 10 * EvalFeatureScale);
+
 // Mobility features
 EVAL_FEATURE(KnightMobilityOpening, 4 * EvalFeatureScale);
 EVAL_FEATURE(KnightMobilityEndgame, 4 * EvalFeatureScale);
@@ -29,13 +32,13 @@ EVAL_FEATURE(RookOpenFile, 10 * EvalFeatureScale);
 
 // Pawn features
 EVAL_FEATURE(PassedPawnOpeningMin, 10 * EvalFeatureScale);
-EVAL_FEATURE(PassedPawnOpeningMax, 70 * EvalFeatureScale);
+EVAL_FEATURE(PassedPawnOpeningMax, 71 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnEndgameMin, 20 * EvalFeatureScale);
-EVAL_FEATURE(PassedPawnEndgameMax, 140 * EvalFeatureScale);
+EVAL_FEATURE(PassedPawnEndgameMax, 142 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnPushEndgame, 60 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnFriendlyKingDistanceEndgame, 5 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnEnemyKingDistanceEndgame, 20 * EvalFeatureScale);
-EVAL_FEATURE(UnstoppablePawnEndgame, 600 * EvalFeatureScale);
+EVAL_FEATURE(UnstoppablePawnEndgame, 800 * EvalFeatureScale);
 
 EVAL_FEATURE(CandidatePawnOpeningMin, 5 * EvalFeatureScale);
 EVAL_FEATURE(CandidatePawnOpeningMax, 55 * EvalFeatureScale);
@@ -142,9 +145,10 @@ void InitializeEvaluation()
 	}
 
 	// TODO: Make EVAL_SCORES
+	RowScoreMultiplier[RANK_3] = 5;
 	RowScoreMultiplier[RANK_4] = 26;
-	RowScoreMultiplier[RANK_5] = 77;
-	RowScoreMultiplier[RANK_6] = 154;
+	RowScoreMultiplier[RANK_5] = 84;
+	RowScoreMultiplier[RANK_6] = 161;
 	RowScoreMultiplier[RANK_7] = 256;
 }
 
@@ -259,8 +263,8 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 			pawnScores.Endgame += multiplier * IsolatedPawnEndgame;
 		}
 
-		// Backward pawns
-		Bitboard supportingPawns = PassedPawnBitboards[pushSquare][them] & ourPawns;
+		// Backward pawns (TODO)
+/*		Bitboard supportingPawns = PassedPawnBitboards[pushSquare][them] & ourPawns;
 		XorClearBit(supportingPawns, square);
 		if (supportingPawns == 0)
 		{
@@ -270,7 +274,7 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 				pawnScores.Opening += multiplier * (openFile ? BackwardOpenFilePawnOpening : BackwardPawnOpening);
 				pawnScores.Endgame += multiplier * BackwardPawnEndgame;
 			}
-		}
+		}*/
 
 		if ((PawnLessBitboards[square][color] & ourPawns) == 0)
 		{
@@ -476,7 +480,7 @@ void EvalPassed(const Position &position, u8 passedFiles, int oppGamePhase, int 
 
 					if (GetKingDistance(position.KingPos[FlipColor(color)], promotionSquare) > stepsToPromote)
 					{
-						endgameResult += multiplier * UnstoppablePawnEndgame;
+						scoreMax += UnstoppablePawnEndgame;
 					}
 				}
 				else if (position.Board[pushSquare] == PIECE_NONE &&
@@ -501,6 +505,17 @@ int Evaluate(const Position &position, EvalInfo &evalInfo)
 
 	int opening = position.PsqEvalOpening * EvalFeatureScale;
 	int endgame = position.PsqEvalEndgame * EvalFeatureScale;
+
+	if (position.ToMove == WHITE)
+	{
+		opening += TempoOpening;
+		endgame += TempoEndgame;
+	}
+	else
+	{
+		opening -= TempoOpening;
+		endgame -= TempoEndgame;
+	}
 
 	evalInfo.GamePhase[WHITE] = 0;
 	evalInfo.GamePhase[BLACK] = 0;
@@ -532,7 +547,33 @@ int Evaluate(const Position &position, EvalInfo &evalInfo)
 	for (Color color = WHITE; color <= BLACK; color++)
 	{
 		const int kingColumn = GetColumn(position.KingPos[color]);
-		int penalty = kingColumn < FILE_D ? pawnScores->Queenside[color] : (kingColumn > FILE_E ? pawnScores->Kingside[color] : pawnScores->Center[color]);
+		int penalty;
+		
+		switch (kingColumn)
+		{
+		case FILE_A:
+		case FILE_B:
+			penalty = pawnScores->Queenside[color];
+			break;
+
+		case FILE_C:
+			penalty = (pawnScores->Queenside[color] + pawnScores->Center[color]) / 2;
+			break;
+
+		case FILE_D:
+		case FILE_E:
+			penalty = pawnScores->Center[color];
+			break;
+
+		case FILE_F:
+			penalty = (pawnScores->Center[color] + pawnScores->Kingside[color]) / 2;
+			break;
+
+		case FILE_G:
+		case FILE_H:
+			penalty = pawnScores->Kingside[color];
+			break;
+		}
 
 		int castlePenalty = penalty;
 		int castleFlags = color == WHITE ? position.CastleFlags : position.CastleFlags >> 2;
@@ -549,8 +590,6 @@ int Evaluate(const Position &position, EvalInfo &evalInfo)
 
 		opening -= GetMultiplier(color) * ((penalty + castlePenalty) / 2) * EvalFeatureScale;
 	}
-
-	// TODO: tempo bonus?
 
 	// Linear interpolation between opening and endgame
 	int result = ((opening * gamePhase) + (endgame * (gamePhaseMax - gamePhase))) / gamePhaseMax;
