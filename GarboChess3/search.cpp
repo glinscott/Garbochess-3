@@ -765,8 +765,8 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		if (ply >= 2 * OnePly &&
 			!(flags & 1) &&
 			// Make sure we don't null move if we don't have any heavy pieces left
-			evalInfo.GamePhase[position.ToMove] > 0 &&
-			(evaluation = Evaluate(position, evalInfo)) >= beta)
+			(evaluation = Evaluate(position, evalInfo)) >= beta &&
+			evalInfo.GamePhase[position.ToMove] > 0)
 		{
 			// Attempt to null-move
 			MoveUndo moveUndo;
@@ -875,7 +875,6 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 				// Try futility pruning
 				if (!inCheck &&
 					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves &&
-					GetPieceType(position.Board[GetTo(move)]) != PAWN &&
 					ply <= futilityPruningDepth)
 				{
 					ASSERT(evaluation != MaxEval);
@@ -885,7 +884,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 					if (value < beta)
 					{
 						position.UnmakeMove(move, moveUndo);
-			
+
 						if (value > bestScore)
 						{
 							bestScore = value;
@@ -1028,9 +1027,12 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 		hashMove == 0)
 	{
 		// Try IID
-		SearchPV(position, searchInfo, alpha, beta, max(OnePly, min(ply - (2 * OnePly), ply / 2)), depthFromRoot + 1, inCheck);
-
-		// TODO: re-search if < alpha here?  that means we won't have a best move...
+		const int newPly = max(OnePly, min(ply - (2 * OnePly), ply / 2));
+		int score = SearchPV(position, searchInfo, alpha, beta, newPly, depthFromRoot + 1, inCheck);
+		if (score <= alpha && alpha != MinEval)
+		{
+			SearchPV(position, searchInfo, MinEval, beta, newPly, depthFromRoot + 1, inCheck);
+		}
 
 		if (ProbeHash(position.Hash, hashEntry))
 		{
@@ -1085,9 +1087,10 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 			else
 			{
 				if (!inCheck &&
-					moveCount >= 7 &&
+					moveCount >= 9 &&
 					ply >= 3 * OnePly &&
-					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves)
+					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves &&
+					GetPieceType(position.Board[GetTo(move)]) != PAWN)
 				{
 					newPly = ply - (OnePly * 2);
 				}
