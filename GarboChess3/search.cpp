@@ -410,7 +410,6 @@ public:
 			{
 				int historyScore = History[position.Board[GetFrom(moves[i])]][GetTo(moves[i])];
 				if (historyScore > 32767) historyScore = 32767;
-				if (historyScore < -32767) historyScore = -32767;
 				moveScores[i] = historyScore;
 			}
 
@@ -513,7 +512,8 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 		}
 	}
 
-	const int optimisticValue = eval + 100;
+	const int optimisticValue = eval + 50;
+	const bool isCutNode = alpha + 1 == beta;
 
 	MoveSorter<64> moves(position);
 	moves.GenerateCaptures();
@@ -543,8 +543,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 			}
 			else
 			{
-				if (pruneValue <= alpha &&
-					alpha == beta - 1)
+				if (pruneValue <= alpha && isCutNode)
 				{
 					value = pruneValue;
 				}
@@ -575,7 +574,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 		}
 	}
 
-	if (depth < -6)
+	if (depth < -2)
 	{
 		// Don't bother searching checking moves
 		return eval;
@@ -758,38 +757,16 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		hashMove = 0;
 	}
 
-	int evaluation;
+	int evaluation = MaxEval;
+	EvalInfo evalInfo;
 
 	if (!inCheck)
 	{
-		EvalInfo evalInfo;
-		evaluation = Evaluate(position, evalInfo);
-
-		int razorEval = evaluation + 125;
-		if (razorEval < beta)
-		{
-			// Try some razoring
-			if (ply <= OnePly)
-			{
-				int value = QSearch(position, searchInfo, beta - 1, beta, ply - OnePly);
-				return max(value, razorEval);
-			}
-			razorEval += 175;
-			if (razorEval < beta && ply <= OnePly * 3)
-			{
-				int value = QSearch(position, searchInfo, beta - 1, beta, ply - OnePly);
-				if (value < beta)
-				{
-					return max(value, razorEval);
-				}
-			}
-		}
-
 		if (ply >= 2 * OnePly &&
-			evaluation >= beta &&
 			!(flags & 1) &&
 			// Make sure we don't null move if we don't have any heavy pieces left
-			evalInfo.GamePhase[position.ToMove] > 0)
+			evalInfo.GamePhase[position.ToMove] > 0 &&
+			(evaluation = Evaluate(position, evalInfo)) >= beta)
 		{
 			// Attempt to null-move
 			MoveUndo moveUndo;
@@ -824,6 +801,26 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 				return score;
 			}
 		}
+		else
+		{
+			// Try razoring
+			if (ply <= OnePly * 3)
+			{
+				if (evaluation == MaxEval)
+				{
+					evaluation = Evaluate(position, evalInfo);
+				}
+
+				if (evaluation < beta - 300)
+				{
+					int value = QSearch(position, searchInfo, beta - 1, beta, max(0, ply - (OnePly * 2)));
+					if (value < beta)
+					{
+						return value;
+					}
+				}
+			}
+		}
 	}
 
 	MoveSorter<256> moves(position);
@@ -845,11 +842,20 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		}
 	}
 
+	const int futilityPruningDepth = OnePly * 3;
+
 	int moveCount = 0;
 	int bestScore = MoveSentinelScore;
 	Move move;
 	while ((move = moves.NextNormalMove()) != 0)
 	{
+		if (ply <= futilityPruningDepth &&
+			evaluation == MaxEval &&
+			moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves)
+		{
+			evaluation = Evaluate(position, evalInfo);
+		}
+
 		MoveUndo moveUndo;
 		position.MakeMove(move, moveUndo);
 
@@ -870,16 +876,11 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 				if (!inCheck &&
 					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves &&
 					GetPieceType(position.Board[GetTo(move)]) != PAWN &&
-					ply <= 2 * OnePly)
+					ply <= futilityPruningDepth)
 				{
-					if (ply <= OnePly * 2)
-					{
-						value = evaluation + 100;
-					}
-					else 
-					{
-						value = evaluation + 250;
-					}
+					ASSERT(evaluation != MaxEval);
+
+					value = evaluation + ((ply / OnePly) * 100);
 
 					if (value < beta)
 					{
@@ -896,19 +897,11 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 				// Apply late move reductions if the conditions are met.
 				if (!inCheck &&
-					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves &&
-					moveCount >= 4 &&
-					ply >= 3 * OnePly)
+					moveCount >= 3 &&
+					ply >= 3 * OnePly &&
+					moves.GetMoveGenerationState() >= MoveGenerationState_Killer1)
 				{
-					if (moveCount >= 25 &&
-						GetPieceType(position.Board[GetTo(move)]) != PAWN)
-					{
-						newPly = ply - ((5 * OnePly) / 2);
-					}
-					else
-					{
-						newPly = ply - (2 * OnePly);
-					}
+					newPly = ply - (2 * OnePly);
 				}
 				else
 				{
@@ -926,7 +919,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 				value = -Search(position, searchInfo, 1 - beta, newPly, depthFromRoot + 1, 0, isChecking);
 			}
 
-			if (newPly <= ply - (2 * OnePly) && value >= beta)
+			if (newPly < ply - OnePly && value >= beta)
 			{
 				// Re-search if the reduced move actually has the potential to be a good move.
 				ASSERT(!isChecking);
@@ -966,15 +959,9 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 						const int normalizedPly = ply / OnePly;
 						const Square from = GetFrom(move);
 						History[position.Board[from]][to] += normalizedPly * normalizedPly;
-						if (History[position.Board[from]][to] > 200000)
+						if (History[position.Board[from]][to] >= 32767)
 						{
-							for (int i = 0; i < 16; i++)
-							{
-								for (int j = 0; j < 64; j++)
-								{
-									History[i][j] /= 8;
-								}
-							}
+							History[position.Board[from]][to] /= 2;
 						}
 					}
 
@@ -1011,15 +998,15 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int beta, const int ply, const int depthFromRoot, const bool inCheck)
 {
 	ASSERT(inCheck ? position.IsInCheck() : !position.IsInCheck());
-
-	// TODO: should probably count PV nodes differently
-	searchInfo.NodeCount++;
+	ASSERT(alpha < beta);
 
 	if (ply <= 0)
 	{
 		ASSERT(!inCheck);
 		return QSearch(position, searchInfo, alpha, beta, 0);
 	}
+
+	searchInfo.NodeCount++;
 
 	if (position.IsDraw())
 	{
@@ -1075,6 +1062,7 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 
 	const int originalAlpha = alpha;
 	int bestScore = MoveSentinelScore;
+	int moveCount = 0;
 
 	Move move;
 	while ((move = moves.NextNormalMove()) != 0)
@@ -1088,7 +1076,26 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 
 			// Search move
 			const bool isChecking = position.IsInCheck();
-			const int newPly = (isChecking || singular) ? ply : ply - OnePly;
+			int newPly;
+			
+			if (isChecking || singular)
+			{
+				newPly = ply;
+			}
+			else
+			{
+				if (!inCheck &&
+					moveCount >= 7 &&
+					ply >= 3 * OnePly &&
+					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves)
+				{
+					newPly = ply - (OnePly * 2);
+				}
+				else
+				{
+					newPly = ply - OnePly;
+				}
+			}
 
 			if (bestScore == MoveSentinelScore)
 			{
@@ -1111,7 +1118,20 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 				}
 			}
 
+			if (newPly < ply - OnePly && value >= beta)
+			{
+				// Re-search if the reduced move actually has the potential to be a good move.
+				ASSERT(!isChecking);
+				ASSERT(!inCheck);
+
+				newPly = ply - OnePly;
+				ASSERT(newPly > 0);
+
+				value = -SearchPV(position, searchInfo, -beta, -alpha, newPly, depthFromRoot + 1, isChecking);
+			}
+
 			position.UnmakeMove(move, moveUndo);
+			moveCount++;
 
 			if (value > bestScore)
 			{
@@ -1124,16 +1144,24 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 
 					if (value >= beta)
 					{
-						// TODO: update history
 						StoreHash(position.Hash, value, move, ply, HashFlagsBeta);
 
 						// Update killers (only for non-captures/promotions)
-						if (position.Board[GetTo(move)] == PIECE_NONE &&
-							GetMoveType(move) != MoveTypePromotion &&
-							move != searchInfo.Killers[depthFromRoot][0])
+						const Square to = GetTo(move);
+						if (position.Board[to] == PIECE_NONE)
 						{
-							searchInfo.Killers[depthFromRoot][1] = searchInfo.Killers[depthFromRoot][0];
-							searchInfo.Killers[depthFromRoot][0] = move;
+							if (GetMoveType(move) != MoveTypePromotion &&
+								move != searchInfo.Killers[depthFromRoot][0])
+							{
+								searchInfo.Killers[depthFromRoot][1] = searchInfo.Killers[depthFromRoot][0];
+								searchInfo.Killers[depthFromRoot][0] = move;
+							}
+
+							const Square from = GetFrom(move);
+							if (History[position.Board[from]][to] >= 32767)
+							{
+								History[position.Board[from]][to] /= 2;
+							}
 						}
 
 						return value;
@@ -1309,7 +1337,7 @@ Move IterativeDeepening(Position &rootPosition, const int maxDepth, int &score, 
 	int bestScore;
 
 	// Iterative deepening loop
-	for (int depth = 1; depth <= min(maxDepth, 99); depth++)
+	for (int depth = 1; depth <= min(maxDepth, 65); depth++)
 	{
 		for (int i = 0; i < moveCount; i++)
 		{
