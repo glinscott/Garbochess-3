@@ -58,6 +58,8 @@ EVAL_FEATURE(BackwardPawnEndgame, -8 * EvalFeatureScale);
 EVAL_FEATURE(BishopPairOpening, 50 * EvalFeatureScale);
 EVAL_FEATURE(BishopPairEndgame, 70 * EvalFeatureScale);
 
+EVAL_FEATURE(ExchangePenalty, 30 * EvalFeatureScale);
+
 // King attack scoring
 EVAL_FEATURE(KingAttackWeightKnight, 30 * EvalFeatureScale);
 EVAL_FEATURE(KingAttackWeightBishop, 30 * EvalFeatureScale);
@@ -159,6 +161,7 @@ struct PawnHashInfo
 	int Endgame;
 	int Kingside[2], Center[2], Queenside[2];
 	u8 Passed[2];
+	u8 Count[2];
 };
 
 // TODO: need to make these thread independent
@@ -204,6 +207,7 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 	const Bitboard ourPawns = allPawns & ourPieces;
 
 	pawnScores.Passed[color] = 0;
+	pawnScores.Count[color] = 0;
 
 	int shelter[8];
 	for (int i = 0; i < 8; i++)
@@ -219,6 +223,8 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 		const Square pushSquare = GetFirstBitIndex(GetPawnMoves(square, color));
 
 		bool openFile = false;
+
+		pawnScores.Count[color]++;
 
 		if ((PawnGreaterBitboards[square][color] & allPawns) == 0)
 		{
@@ -538,6 +544,20 @@ int Evaluate(const Position &position, EvalInfo &evalInfo)
 
 	opening += pawnScores->Opening;
 	endgame += pawnScores->Endgame;
+
+	// Exchange penalty
+	if (evalInfo.GamePhase[WHITE] > evalInfo.GamePhase[BLACK] &&
+		pawnScores->Count[BLACK] > pawnScores->Count[WHITE])
+	{
+		opening += ExchangePenalty;
+		endgame += ExchangePenalty;
+	}
+	else if (evalInfo.GamePhase[BLACK] > evalInfo.GamePhase[WHITE] &&
+		pawnScores->Count[WHITE] > pawnScores->Count[BLACK])
+	{
+		opening -= ExchangePenalty;
+		endgame -= ExchangePenalty;
+	}
 
 	// Passed pawns, using king relative terms
 	EvalPassed<WHITE, 1>(position, pawnScores->Passed[WHITE], evalInfo.GamePhase[BLACK], endgame);
