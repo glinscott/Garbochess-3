@@ -147,10 +147,10 @@ void InitializeEvaluation()
 	}
 
 	// TODO: Make EVAL_SCORES
-	RowScoreMultiplier[RANK_3] = 5;
-	RowScoreMultiplier[RANK_4] = 26;
-	RowScoreMultiplier[RANK_5] = 84;
-	RowScoreMultiplier[RANK_6] = 161;
+	RowScoreMultiplier[RANK_3] = 10;
+	RowScoreMultiplier[RANK_4] = 28;
+	RowScoreMultiplier[RANK_5] = 88;
+	RowScoreMultiplier[RANK_6] = 167;
 	RowScoreMultiplier[RANK_7] = 256;
 }
 
@@ -229,28 +229,31 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 		if ((PawnGreaterBitboards[square][color] & allPawns) == 0)
 		{
 			openFile = true;
+		}
 
-			const Bitboard blockingPawns = PassedPawnBitboards[square][color] & theirPawns;
-			if (blockingPawns == 0)
-			{
-				// Passed pawn
-				pawnScores.Passed[color] |= 1 << GetColumn(square);
+		const Bitboard blockingPawns = PassedPawnBitboards[square][color] & theirPawns;
+		if (blockingPawns == 0)
+		{
+			// Passed pawn
+			pawnScores.Passed[color] |= 1 << GetColumn(square);
 
-				pawnScores.Opening += multiplier * RowScoreScale(PassedPawnOpeningMin, PassedPawnOpeningMax, row);
-			}
-			else
+			int score = RowScoreScale(PassedPawnOpeningMin, PassedPawnOpeningMax, row);
+			if (!openFile) score /= 2;
+
+			pawnScores.Opening += multiplier * score;
+		}
+		else if (openFile)
+		{
+			// Candidate passer
+			int count = CountBitsSetFew(blockingPawns);
+			const Bitboard supportingPawns = PassedPawnBitboards[pushSquare][them] & ~PawnLessBitboards[pushSquare][color] & ourPawns;
+			if (count <= CountBitsSetFew(supportingPawns))
 			{
-				// Candidate passer
-				int count = CountBitsSetFew(blockingPawns);
-				const Bitboard supportingPawns = PassedPawnBitboards[pushSquare][them] & ~PawnLessBitboards[pushSquare][color] & ourPawns;
-				if (count <= CountBitsSetFew(supportingPawns))
+				// Potential candidate.  Now, check if it is being attacked
+				if (CountBitsSetFew(GetPawnAttacks(square, them) & ourPawns) - CountBitsSetFew(GetPawnAttacks(square, color) & theirPawns) >= 0)
 				{
-					// Potential candidate.  Now, check if it is being attacked
-					if (CountBitsSetFew(GetPawnAttacks(square, them) & ourPawns) - CountBitsSetFew(GetPawnAttacks(square, color) & theirPawns) >= 0)
-					{
-						pawnScores.Opening += multiplier * RowScoreScale(CandidatePawnOpeningMin, CandidatePawnOpeningMax, row);
-						pawnScores.Endgame += multiplier * RowScoreScale(CandidatePawnEndgameMin, CandidatePawnEndgameMax, row);
-					}
+					pawnScores.Opening += multiplier * RowScoreScale(CandidatePawnOpeningMin, CandidatePawnOpeningMax, row);
+					pawnScores.Endgame += multiplier * RowScoreScale(CandidatePawnEndgameMin, CandidatePawnEndgameMax, row);
 				}
 			}
 		}
@@ -469,38 +472,38 @@ void EvalPassed(const Position &position, u8 passedFiles, int oppGamePhase, int 
 		while (pawns)
 		{
 			const Square square = PopFirstBit(pawns);
-			if ((PawnGreaterBitboards[square][color] & ourPawns) == 0)
+			const int row = PawnRow<color>(GetRow(square));
+
+			int scoreMax = PassedPawnEndgameMax;
+			const Square pushSquare = GetFirstBitIndex(GetPawnMoves(square, color));
+
+			if (oppGamePhase == 0)
 			{
-				const int row = PawnRow<color>(GetRow(square));
+				// No pieces left, unstoppable bonus possible
+				const int pawnRow = row == RANK_2 ? RANK_3 : row;
+				const Square promotionSquare = MakeSquare(color == WHITE ? RANK_8 : RANK_1, GetColumn(square));
+				int stepsToPromote = GetKingDistance(square, promotionSquare);
+				if (position.ToMove != color) stepsToPromote++;
 
-				int scoreMax = PassedPawnEndgameMax;
-				const Square pushSquare = GetFirstBitIndex(GetPawnMoves(square, color));
-
-				if (oppGamePhase == 0)
+				if (GetKingDistance(position.KingPos[FlipColor(color)], promotionSquare) > stepsToPromote)
 				{
-					// No pieces left, unstoppable bonus possible
-					const int pawnRow = row == RANK_2 ? RANK_3 : row;
-					const Square promotionSquare = MakeSquare(color == WHITE ? RANK_8 : RANK_1, GetColumn(square));
-					int stepsToPromote = GetKingDistance(square, promotionSquare);
-					if (position.ToMove != color) stepsToPromote++;
-
-					if (GetKingDistance(position.KingPos[FlipColor(color)], promotionSquare) > stepsToPromote)
-					{
-						scoreMax += UnstoppablePawnEndgame;
-					}
+					scoreMax += UnstoppablePawnEndgame;
 				}
-				else if (position.Board[pushSquare] == PIECE_NONE &&
-					FastSee(position, GenerateMove(square, pushSquare), color))
-				{
-					// Can we safely push the pawn?
-					scoreMax += PassedPawnPushEndgame;
-				}
-
-				scoreMax -= GetKingDistance(position.KingPos[color], pushSquare) * PassedPawnFriendlyKingDistanceEndgame;
-				scoreMax += GetKingDistance(position.KingPos[FlipColor(color)], pushSquare) * PassedPawnEnemyKingDistanceEndgame;
-
-				endgameResult += multiplier * RowScoreScale(PassedPawnEndgameMin, scoreMax, row);
 			}
+			else if (position.Board[pushSquare] == PIECE_NONE &&
+				FastSee(position, GenerateMove(square, pushSquare), color))
+			{
+				// Can we safely push the pawn?
+				scoreMax += PassedPawnPushEndgame;
+			}
+
+			scoreMax -= GetKingDistance(position.KingPos[color], pushSquare) * PassedPawnFriendlyKingDistanceEndgame;
+			scoreMax += GetKingDistance(position.KingPos[FlipColor(color)], pushSquare) * PassedPawnEnemyKingDistanceEndgame;
+
+			int score = RowScoreScale(PassedPawnEndgameMin, scoreMax, row);
+			if ((PawnGreaterBitboards[square][color] & ourPawns) != 0) score /= 2;
+
+			endgameResult += multiplier * score;
 		}
 	}
 }
