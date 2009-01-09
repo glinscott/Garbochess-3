@@ -484,7 +484,7 @@ SearchInfo &GetSearchInfo(int thread)
 	return (SearchInfo&)*((SearchInfo*)(searchInfoThreads + (SearchInfoPageSize * thread)));
 }
 
-const int qPruningWeight[8] = { 900, 100, 325, 325, 500, 900, 0, 0 };
+const int qPruningWeight[8] = { 900, 200, 325, 325, 500, 900, 0, 0 };
 
 // depth == 0 is normally what is called for q-search.
 // Checks are searched when depth >= -(OnePly / 2).  Depth is decreased by 1 for checks
@@ -503,6 +503,8 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 	EvalInfo evalInfo;
 	int eval = Evaluate(position, evalInfo);
 
+	const bool isCutNode = alpha + 1 == beta;
+
 	if (eval > alpha)
 	{
 		alpha = eval;
@@ -512,8 +514,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 		}
 	}
 
-	const int optimisticValue = eval + 50;
-	const bool isCutNode = alpha + 1 == beta;
+	const int optimisticValue = eval + 75;
 
 	MoveSorter<64> moves(position);
 	moves.GenerateCaptures();
@@ -717,6 +718,20 @@ void CheckKillSearch()
 	}
 }
 
+bool IsPassedPawnPush(const Position &position, Move move)
+{
+	const Square from = GetFrom(move);
+	if (GetPieceType(position.Board[from]) != PAWN)
+	{
+		return false;
+	}
+
+	const Bitboard theirPawns = position.Pieces[PAWN] & position.Colors[FlipColor(position.ToMove)];
+
+	extern Bitboard PassedPawnBitboards[64][2];
+	return (PassedPawnBitboards[GetTo(move)][position.ToMove] & theirPawns) == 0;
+}
+
 int Search(Position &position, SearchInfo &searchInfo, const int beta, const int ply, const int depthFromRoot, const int flags, const bool inCheck)
 {
 	ASSERT(ply > 0);
@@ -856,6 +871,8 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 			evaluation = Evaluate(position, evalInfo);
 		}
 
+		const bool isPassedPawnPush = IsPassedPawnPush(position, move);
+
 		MoveUndo moveUndo;
 		position.MakeMove(move, moveUndo);
 
@@ -874,12 +891,24 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 			{
 				// Try futility pruning
 				if (!inCheck &&
+					!isPassedPawnPush &&
 					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves &&
 					ply <= futilityPruningDepth)
 				{
 					ASSERT(evaluation != MaxEval);
 
-					value = evaluation + ((ply / OnePly) * 100);
+					if (ply < 2 * OnePly)
+					{
+						value = evaluation + 100;
+					}
+					else if (ply < 3 * OnePly)
+					{
+						value = evaluation + 300;
+					}
+					else 
+					{
+						value = evaluation + 500;
+					}
 
 					if (value < beta)
 					{
@@ -896,9 +925,10 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 				// Apply late move reductions if the conditions are met.
 				if (!inCheck &&
+					!isPassedPawnPush &&
 					moveCount >= 3 &&
 					ply >= 3 * OnePly &&
-					moves.GetMoveGenerationState() >= MoveGenerationState_Killer1)
+					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves)
 				{
 					newPly = ply - (2 * OnePly);
 				}
@@ -1023,7 +1053,7 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 		hashMove = 0;
 	}
 
-	if (ply >= OnePly * 2 &&
+	if (ply >= OnePly * 3 &&
 		hashMove == 0)
 	{
 		// Try IID
@@ -1069,6 +1099,8 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 	Move move;
 	while ((move = moves.NextNormalMove()) != 0)
 	{
+		const bool isPassedPawnPush = IsPassedPawnPush(position, move);
+
 		MoveUndo moveUndo;
 		position.MakeMove(move, moveUndo);
 
@@ -1090,7 +1122,7 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 					moveCount >= 9 &&
 					ply >= 3 * OnePly &&
 					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves &&
-					GetPieceType(position.Board[GetTo(move)]) != PAWN)
+					!isPassedPawnPush)
 				{
 					newPly = ply - (OnePly * 2);
 				}
