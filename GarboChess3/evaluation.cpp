@@ -34,10 +34,10 @@ EVAL_FEATURE(RookOpenFile, 10 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnOpeningMin, 10 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnOpeningMax, 71 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnEndgameMin, 20 * EvalFeatureScale);
-EVAL_FEATURE(PassedPawnEndgameMax, 142 * EvalFeatureScale);
-EVAL_FEATURE(PassedPawnPushEndgame, 60 * EvalFeatureScale);
+EVAL_FEATURE(PassedPawnEndgameMax, 160 * EvalFeatureScale);
+EVAL_FEATURE(PassedPawnPushEndgame, 65 * EvalFeatureScale);
 EVAL_FEATURE(PassedPawnFriendlyKingDistanceEndgame, 5 * EvalFeatureScale);
-EVAL_FEATURE(PassedPawnEnemyKingDistanceEndgame, 20 * EvalFeatureScale);
+EVAL_FEATURE(PassedPawnEnemyKingDistanceEndgame, 23 * EvalFeatureScale);
 EVAL_FEATURE(UnstoppablePawnEndgame, 800 * EvalFeatureScale);
 
 EVAL_FEATURE(CandidatePawnOpeningMin, 5 * EvalFeatureScale);
