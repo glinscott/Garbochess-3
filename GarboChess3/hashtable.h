@@ -2,6 +2,7 @@ const int HashFlagsAlpha = 0;
 const int HashFlagsBeta = 1;
 const int HashFlagsExact = 2;
 const int HashFlagsMask = 3;
+const int HashFlagsEasyMove = 4;
 
 #pragma pack(push, 1)
 struct HashEntry
@@ -15,6 +16,11 @@ struct HashEntry
 	int GetHashFlags() const
 	{
 		return Extra & HashFlagsMask;
+	}
+
+	int GetIsEasyMove() const
+	{
+		return Extra & HashFlagsEasyMove;
 	}
 
 	int GetHashDate() const
