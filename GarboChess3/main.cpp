@@ -218,10 +218,16 @@ int main()
 	RunEngine();
 
 	Position position;
-//	position.Initialize("r5k1/1p2bN1p/1PP3n1/5R1N/8/5BP1/4QPKP/q1q5 b - - 0 1");
-//	position.Initialize("r5k1/4bN1p/1Pp3n1/5R1N/8/5BPK/4QP1P/q1q5 b - - 0 2");
-//	position.Initialize("r5k1/4bR1p/1Pp5/4N2N/8/6PK/5PBP/3q4 w - - 0 6");
-	position.Initialize("4rk2/p1p2p2/2Rb1Bp1/1r1p4/3P2P1/1P2P3/P1R2K2/8 b - - 8 53");
+//	position.Initialize("4N3/8/1pkR4/3p4/1p2p3/r5P1/5PK1/8 b - - 1 53"); // Good test position that passed pawns own pieces sometimes.
+//	position.Initialize("8/8/5p1k/1p1pp2P/pP3PK1/P1P5/8/8 b - f3"); // d4 wins
+
+//	position.Initialize("1r4k1/4p3/3p2Pp/qp1n4/2pB1rnP/P1P5/2BQ4/R3R1K1 w - - 1 34"); // avoid Rf4
+//	position.Initialize("8/6p1/8/5N1r/5K2/1b6/pk4P1/4R3 w - - 0 63 "); // Completely won for black...  Should be able to spot it.
+//	position.Initialize("1r1qr1k1/3nppb1/b2p2p1/2pn4/8/2N1BNPB/PPQ1PP2/R3K2R w KQ -"); // Testing.
+	position.Initialize("4r3/pp1brp2/4p1k1/4P3/5R2/P1R4P/1P3PP1/6K1 b - - 0 23"); // mate in 7 - q-search danger extensions
+	position.Initialize("4r1k1/5p1p/b1p1q1p1/p2pn3/1r5P/PPN2BP1/2QRPP2/5RK1 w - - 1 26"); // Bxd5 is noooo good - queen proximity to king term
+//  position.Initialize("r1b1rqk1/pp3pbp/4p1p1/1Q6/4BBN1/R7/1P3PPP/2R3K1 w - -");
+
 	EvalInfo evalInfo;
 	int score = Evaluate(position, evalInfo);
 	Move move = IterativeDeepening(position, 99, score, -1, true);

@@ -18,17 +18,17 @@ EVAL_FEATURE(TempoOpening, 20 * EvalFeatureScale);
 EVAL_FEATURE(TempoEndgame, 10 * EvalFeatureScale);
 
 // Mobility features
-EVAL_FEATURE(KnightMobilityOpening, 4 * EvalFeatureScale);
-EVAL_FEATURE(KnightMobilityEndgame, 4 * EvalFeatureScale);
-EVAL_FEATURE(BishopMobilityOpening, 5 * EvalFeatureScale);
-EVAL_FEATURE(BishopMobilityEndgame, 5 * EvalFeatureScale);
-EVAL_FEATURE(RookMobilityOpening, 2 * EvalFeatureScale);
-EVAL_FEATURE(RookMobilityEndgame, 4 * EvalFeatureScale);
-EVAL_FEATURE(QueenMobilityOpening, 1 * EvalFeatureScale);
-EVAL_FEATURE(QueenMobilityEndgame, 2 * EvalFeatureScale);
+EVAL_FEATURE(KnightMobilityOpening, 150);
+EVAL_FEATURE(KnightMobilityEndgame, 115);
+EVAL_FEATURE(BishopMobilityOpening, 130);
+EVAL_FEATURE(BishopMobilityEndgame, 130);
+EVAL_FEATURE(RookMobilityOpening, 50);
+EVAL_FEATURE(RookMobilityEndgame, 135);
+EVAL_FEATURE(QueenMobilityOpening, 25);
+EVAL_FEATURE(QueenMobilityEndgame, 45);
 
-EVAL_FEATURE(RookSemiOpenFile, 10 * EvalFeatureScale);
-EVAL_FEATURE(RookOpenFile, 10 * EvalFeatureScale);
+EVAL_FEATURE(RookSemiOpenFile, 8 * EvalFeatureScale);
+EVAL_FEATURE(RookOpenFile, 17 * EvalFeatureScale);
 
 // Pawn features
 EVAL_FEATURE(PassedPawnOpeningMin, 10 * EvalFeatureScale);
@@ -45,12 +45,12 @@ EVAL_FEATURE(CandidatePawnOpeningMax, 55 * EvalFeatureScale);
 EVAL_FEATURE(CandidatePawnEndgameMin, 10 * EvalFeatureScale);
 EVAL_FEATURE(CandidatePawnEndgameMax, 110 * EvalFeatureScale);
 
-EVAL_FEATURE(DoubledPawnOpening, -10 * EvalFeatureScale);
+EVAL_FEATURE(DoubledPawnOpening, -8 * EvalFeatureScale);
 EVAL_FEATURE(DoubledPawnEndgame, -20 * EvalFeatureScale);
-EVAL_FEATURE(IsolatedPawnOpening, -10 * EvalFeatureScale);
+EVAL_FEATURE(IsolatedPawnOpening, -15 * EvalFeatureScale);
 EVAL_FEATURE(IsolatedOpenFilePawnOpening, -20 * EvalFeatureScale);
-EVAL_FEATURE(IsolatedPawnEndgame, -20 * EvalFeatureScale);
-EVAL_FEATURE(BackwardPawnOpening, -6 * EvalFeatureScale);
+EVAL_FEATURE(IsolatedPawnEndgame, -14 * EvalFeatureScale);
+EVAL_FEATURE(BackwardPawnOpening, -12 * EvalFeatureScale);
 EVAL_FEATURE(BackwardOpenFilePawnOpening, -12 * EvalFeatureScale);
 EVAL_FEATURE(BackwardPawnEndgame, -8 * EvalFeatureScale);
 
@@ -61,7 +61,8 @@ EVAL_FEATURE(BishopPairEndgame, 70 * EvalFeatureScale);
 EVAL_FEATURE(ExchangePenalty, 30 * EvalFeatureScale);
 
 // King attack scoring
-EVAL_FEATURE(KingAttackWeightKnight, 30 * EvalFeatureScale);
+EVAL_FEATURE(KingAttackWeightPawn, 20 * EvalFeatureScale);
+EVAL_FEATURE(KingAttackWeightKnight, 35 * EvalFeatureScale);
 EVAL_FEATURE(KingAttackWeightBishop, 30 * EvalFeatureScale);
 EVAL_FEATURE(KingAttackWeightRook, 60 * EvalFeatureScale);
 EVAL_FEATURE(KingAttackWeightQueen, 120 * EvalFeatureScale);
@@ -293,13 +294,13 @@ void EvalPawns(const Position &position, PawnHashInfo &pawnScores)
 	}
 
 	// Kingside pawn shelter
-	pawnScores.Kingside[color] = shelter[FILE_F] + (shelter[FILE_G] * 2) + shelter[FILE_H];
+	pawnScores.Kingside[color] = shelter[FILE_F] + (shelter[FILE_G] * 3 / 2) + shelter[FILE_H];
 
 	// Center pawn shelter
-	pawnScores.Center[color] = shelter[FILE_C] / 2 + (shelter[FILE_D] * 3 / 2) + (shelter[FILE_E] * 2) + shelter[FILE_F];
+	pawnScores.Center[color] = shelter[FILE_C] / 2 + (shelter[FILE_D] * 3 / 2) + (shelter[FILE_E] * 3 / 2) + shelter[FILE_F];
 
 	// Queenside pawn shelter
-	pawnScores.Queenside[color] = shelter[FILE_A] / 2 + shelter[FILE_B] + (shelter[FILE_C] * 2) + shelter[FILE_D];
+	pawnScores.Queenside[color] = shelter[FILE_A] / 2 + shelter[FILE_B] + (shelter[FILE_C] * 3 / 2) + shelter[FILE_D];
 }
 
 void ProbePawnHash(const Position &position, PawnHashInfo *&pawnScores)
@@ -322,7 +323,7 @@ void ProbePawnHash(const Position &position, PawnHashInfo *&pawnScores)
 }
 
 template<Color color, int multiplier>
-void EvalPieces(const Position &position, int &openingResult, int &endgameResult, int &gamePhase)
+void EvalPieces(const Position &position, int &openingResult, int &endgameResult, int &gamePhase, bool &kingDanger)
 {
 	int opening = 0, endgame = 0;
 
@@ -334,7 +335,13 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 	int kingAttacks = 0;
 	int kingAttackWeight = 0;
 
-	// TODO: king attacks by pawns?
+	const Bitboard pawns = position.Pieces[PAWN] & us;
+	if ((color == BLACK && (((pawns << 7) | (pawns << 9)) & kingMoves)) ||
+		(color == WHITE && (((pawns >> 7) | (pawns >> 9)) & kingMoves)))
+	{
+		kingAttacks++;
+		kingAttackWeight += KingAttackWeightPawn;
+	}
 
 	// Knight evaluation
 	Bitboard b = position.Pieces[KNIGHT] & us;
@@ -344,7 +351,7 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 
 		// Mobility
 		const Bitboard attacks = GetKnightAttacks(square);
-		const int mobility = CountBitsSetFew(attacks) - 4;
+		const int mobility = CountBitsSetFew(attacks) - 3;
 		opening += mobility * KnightMobilityOpening;
 		endgame += mobility * KnightMobilityEndgame;
 		
@@ -366,7 +373,7 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 
 		// Mobility
 		const Bitboard attacks = GetBishopAttacks(square, allPieces);
-		const int mobility = CountBitsSet(attacks) - 6;
+		const int mobility = CountBitsSet(attacks) - 2;
 		opening += mobility * BishopMobilityOpening;
 		endgame += mobility * BishopMobilityEndgame;
 		
@@ -394,7 +401,7 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 
 		// Mobility
 		const Bitboard attacks = GetRookAttacks(square, allPieces);
-		const int mobility = CountBitsSet(attacks) - 7;
+		const int mobility = CountBitsSet(attacks) - 4;
 		opening += mobility * RookMobilityOpening;
 		endgame += mobility * RookMobilityEndgame;
 		
@@ -420,6 +427,9 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 				endgame += RookOpenFile;
 			}
 		}
+
+		// TODO: rook on 7th
+		// TODO: penalize rooks trapped inside king
 	}
 
 	// Queen evaluation
@@ -430,7 +440,7 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 
 		// Mobility
 		const Bitboard attacks = GetQueenAttacks(square, allPieces);
-		const int mobility = CountBitsSet(attacks) - 13;
+		const int mobility = CountBitsSet(attacks) - 5;
 		opening += mobility * QueenMobilityOpening;
 		endgame += mobility * QueenMobilityEndgame;
 		
@@ -440,11 +450,22 @@ void EvalPieces(const Position &position, int &openingResult, int &endgameResult
 		{
 			kingAttacks++;
 			kingAttackWeight += KingAttackWeightQueen;
+
+			if (kingMoves & GetKingAttacks(square))
+			{
+				// Danger!  Queen close to king
+				kingAttacks++;
+				kingAttackWeight += KingAttackWeightQueen;
+			}
 		}
+
+		// TODO: queen on 7th
 	}
 
 	// Give ourselves a bonus for how many of our big pieces are attacking the king.  The more the better.
 	opening += (kingAttackWeight * KingAttackWeightScale[kingAttacks]) / 256;
+
+	kingDanger = kingAttacks >= 2;
 
 	openingResult += opening * multiplier;
 	endgameResult += endgame * multiplier;
@@ -529,8 +550,8 @@ int Evaluate(const Position &position, EvalInfo &evalInfo)
 	evalInfo.GamePhase[WHITE] = 0;
 	evalInfo.GamePhase[BLACK] = 0;
 
-	EvalPieces<WHITE, 1>(position, opening, endgame, evalInfo.GamePhase[WHITE]);
-	EvalPieces<BLACK, -1>(position, opening, endgame, evalInfo.GamePhase[BLACK]);
+	EvalPieces<WHITE, 1>(position, opening, endgame, evalInfo.GamePhase[WHITE], evalInfo.KingDanger[BLACK]);
+	EvalPieces<BLACK, -1>(position, opening, endgame, evalInfo.GamePhase[BLACK], evalInfo.KingDanger[WHITE]);
 
 	// Goes from gamePhaseMax at opening to 0 at endgame
 	int gamePhase = evalInfo.GamePhase[WHITE] + evalInfo.GamePhase[BLACK];

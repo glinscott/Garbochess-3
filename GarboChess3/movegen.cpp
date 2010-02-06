@@ -404,6 +404,26 @@ inline bool IsQueensideCastleLegal(const Position &position, const Bitboard allP
 	return false;
 }
 
+int GenerateSliderMoves(const Position &position, Move *moves)
+{
+	const Color us = position.ToMove;
+	const Color them = FlipColor(position.ToMove);
+	const Bitboard ourPieces = position.Colors[us];
+	const Bitboard allPieces = position.GetAllPieces();
+	const Bitboard targets = ~allPieces;
+
+	int moveCount = 0;
+	Bitboard b;
+
+	// Normal piece moves
+	MoveGenerationLoop(GetKnightAttacks(from), position.Pieces[KNIGHT]);
+	MoveGenerationLoop(GetBishopAttacks(from, allPieces), position.Pieces[BISHOP] | position.Pieces[QUEEN]);
+	MoveGenerationLoop(GetRookAttacks(from, allPieces), position.Pieces[ROOK] | position.Pieces[QUEEN]);
+	MoveGenerationLoop(GetKingAttacks(from), position.Pieces[KING]);
+
+	return moveCount;
+}
+
 int GenerateQuietMoves(const Position &position, Move *moves)
 {
 	const Color us = position.ToMove;

@@ -84,6 +84,10 @@ void UnitTests()
 	position.Initialize("8/2b2k2/3p1P2/2nPpNBp/1RQ1P1K1/5P2/7q/r7 w - - 0 0");
 	moveCount = GenerateCheckEscapeMoves(position, moves);
 	ASSERT(moveCount == 0);
+
+	position.Initialize("2r5/pp1brp2/4pR2/4P1k1/5P2/P1R4P/1P4P1/6K1 b - f3 0 25");
+	SearchInfo searchInfo;
+	score = QSearchCheck(position, searchInfo, MinEval, MaxEval, 0); 
 }
 
 void CheckSee(const std::string &fen, const std::string &move, bool expected)
@@ -266,10 +270,11 @@ void PawnEvaluationTests()
 void EvaluationFlipTests()
 {
 	std::FILE* file;
-//	fopen_s(&file, "tests/wac.epd", "rt");
-	fopen_s(&file, "tests/perftsuite.epd", "rt");
+	fopen_s(&file, "tests/wac.epd", "rt");
+//	fopen_s(&file, "tests/perftsuite.epd", "rt");
 
 	char line[500];
+	int at = 0;
 	while (std::fgets(line, 500, file) != NULL)
 	{
 		Position position;
@@ -620,5 +625,5 @@ void RunTests()
 	u64 totalTime = GetCurrentMilliseconds() - startTime;
 	printf("NPS: %.2lf\n", (totalCount / (totalTime / 1000.0)));*/
 
-//	RunPerftSuite(4);
+//	RunPerftSuite(5);
 }

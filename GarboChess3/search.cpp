@@ -294,10 +294,12 @@ public:
 		*/
 	}
 
-	inline void InitializeNormalMoves(const Move hashMove, const Move killer1, const Move killer2)
+	inline void InitializeNormalMoves(const Move hashMove, const Move killer1, const Move killer2, const bool generatePawnMoves)
 	{
 		at = 0;
 		state = hashMove == 0 ? MoveGenerationState_GenerateWinningEqualCaptures : MoveGenerationState_Hash;
+
+    this->generatePawnMoves = generatePawnMoves;
 
 		this->hashMove = hashMove;
 		this->killer1 = killer1;
@@ -407,7 +409,14 @@ public:
 			// Intentional fall-through
 
 		case MoveGenerationState_GenerateQuietMoves:
-			moveCount = GenerateQuietMoves(position, moves);
+      if (generatePawnMoves)
+      {
+			  moveCount = GenerateQuietMoves(position, moves);
+      }
+      else
+      {
+			  moveCount = GenerateSliderMoves(position, moves);
+      }
 			at = 0;
 
 			for (int i = 0; i < moveCount; i++)
@@ -467,6 +476,7 @@ private:
 	Move losingCaptures[32];
 	int losingCapturesCount;
 
+  bool generatePawnMoves;
 	int at;
 	const Position &position;
 	MoveGenerationState state;
@@ -518,7 +528,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 		}
 	}
 
-	const int optimisticValue = eval + 70;
+	const int optimisticValue = eval + 50;
 
 	MoveSorter<64> moves(position);
 	moves.GenerateCaptures();
@@ -579,7 +589,8 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 		}
 	}
 
-	if (depth < -2)
+	// If the king is in danger, gamble a bit more on checking moves
+	if ((depth < -2 && !evalInfo.KingDanger[FlipColor(position.ToMove)]) || depth < -8)
 	{
 		// Don't bother searching checking moves
 		return eval;
@@ -839,7 +850,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 	bool singular = false;
 	if (!inCheck)
 	{
-		moves.InitializeNormalMoves(hashMove, searchInfo.Killers[depthFromRoot][0], searchInfo.Killers[depthFromRoot][1]);
+		moves.InitializeNormalMoves(hashMove, searchInfo.Killers[depthFromRoot][0], searchInfo.Killers[depthFromRoot][1], ply >= OnePly * 2);
 	}
 	else
 	{
@@ -880,7 +891,11 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 			// Search move
 			const bool isChecking = position.IsInCheck();
 			int newPly;
-			if (isChecking || singular)
+			if (isChecking)
+			{
+				newPly = ply - (OnePly / 2);
+			}
+			else if (singular)
 			{
 				newPly = ply;
 			}
@@ -896,11 +911,11 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 					if (ply < 2 * OnePly)
 					{
-						value = evaluation + 125;
+						value = evaluation + 250;
 					}
 					else if (ply < 3 * OnePly)
 					{
-						value = evaluation + 310;
+						value = evaluation + 325;
 					}
 					else 
 					{
@@ -927,7 +942,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 					ply >= 3 * OnePly &&
 					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves)
 				{
-					newPly = ply - (2 * OnePly);
+          newPly = ply - ((2 * OnePly) + (moveCount >= 15 ? OnePly / 2: 0 ));
 				}
 				else
 				{
@@ -937,8 +952,14 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 			if (newPly <= 0)
 			{
-				ASSERT(!isChecking);
-				value = -QSearch(position, searchInfo, -beta, 1 - beta, 0);
+				if (isChecking)
+				{
+					value = -QSearchCheck(position, searchInfo, -beta, 1 - beta, 0);
+				}
+				else
+				{
+					value = -QSearch(position, searchInfo, -beta, 1 - beta, 0);
+				}
 			}
 			else
 			{
@@ -1074,7 +1095,7 @@ int SearchPV(Position &position, SearchInfo &searchInfo, int alpha, const int be
 
 	if (!inCheck)
 	{
-		moves.InitializeNormalMoves(hashMove, searchInfo.Killers[depthFromRoot][0], searchInfo.Killers[depthFromRoot][1]);
+		moves.InitializeNormalMoves(hashMove, searchInfo.Killers[depthFromRoot][0], searchInfo.Killers[depthFromRoot][1], true);
 	}
 	else
 	{

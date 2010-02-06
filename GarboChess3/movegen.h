@@ -9,6 +9,7 @@ inline int ScoreCaptureMove(const PieceType fromPiece, const PieceType toPiece)
 }
 int ScoreCaptureMove(const Move move, const PieceType fromPiece, const PieceType toPiece);
 
+int GenerateSliderMoves(const Position &position, Move *moves);
 int GenerateQuietMoves(const Position &position, Move *moves);
 int GenerateCaptureMoves(const Position &position, Move *moves, s16 *moveScores);
 int GenerateCheckingMoves(const Position &position, Move *moves);

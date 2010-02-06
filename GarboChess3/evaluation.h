@@ -12,6 +12,7 @@ void InitializeEvaluation();
 struct EvalInfo
 {
 	int GamePhase[2];
+	bool KingDanger[2];
 };
 
 int Evaluate(const Position &position, EvalInfo &evalInfo);
