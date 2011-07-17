@@ -270,8 +270,8 @@ void PawnEvaluationTests()
 void EvaluationFlipTests()
 {
 	std::FILE* file;
-	fopen_s(&file, "tests/wac.epd", "rt");
-//	fopen_s(&file, "tests/perftsuite.epd", "rt");
+    file = std::fopen("tests/wac.epd", "rt");
+//	fopen(&file, "tests/perftsuite.epd", "rt");
 
 	char line[500];
 	int at = 0;
@@ -413,7 +413,7 @@ u64 perft(Position &position, int depth)
 void RunPerftSuite(int depthToVerify)
 {
 	std::FILE* file;
-	fopen_s(&file, "tests/perftsuite.epd", "rt");
+	file = fopen("tests/perftsuite.epd", "rt");
 
 	char line[500];
 	u64 startTime = GetCurrentMilliseconds();
@@ -433,7 +433,7 @@ void RunPerftSuite(int depthToVerify)
 
 				int depth;
 				u64 expected;
-				sscanf_s(line + i + 2, "%d %lld", &depth, &expected);
+				sscanf(line + i + 2, "%d %lld", &depth, &expected);
 				if (depth <= depthToVerify)
 				{
 					u64 count = perft(position, depth);
@@ -529,7 +529,7 @@ int AlphaBetaTest(Position &position, int alpha, int beta, Move &bestMove, int d
 void TestSuite(int depth)
 {
 	std::FILE* file;
-	fopen_s(&file, "tests/wac.epd", "rt");
+    file = std::fopen("tests/wac.epd", "rt");
 
 	char line[500];
 	int test = 0, passed = 0;

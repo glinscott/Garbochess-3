@@ -1,6 +1,8 @@
 #pragma warning(disable:4530)
 
+#ifdef _MSC_VER
 #include <intrin.h>
+#endif
 
 #if _DEBUG
 extern "C" {

@@ -6,6 +6,8 @@
 #include "hashtable.h"
 #include "utilities.h"
 
+#include <cstdlib>
+
 void RunTests();
 
 // Hashtable definitions
@@ -37,11 +39,10 @@ void IncrementHashDate()
 	HashDate = (HashDate + 1) & 0xf;
 }
 
-static int foo = 0;
 std::string ReadLine()
 {
 	char line[16384];
-	gets_s(line, 16384);
+    std::gets(line);
 	return std::string(line);
 } 
 
@@ -213,9 +214,9 @@ int main()
 	InitializeSearch();
 	InitializeHash(129000000);
 
-//	RunTests();
+	RunTests();
 
-	RunEngine();
+//	RunEngine();
 
 	Position position;
 //	position.Initialize("4N3/8/1pkR4/3p4/1p2p3/r5P1/5PK1/8 b - - 1 53"); // Good test position that passed pawns own pieces sometimes.
@@ -225,7 +226,7 @@ int main()
 //	position.Initialize("8/6p1/8/5N1r/5K2/1b6/pk4P1/4R3 w - - 0 63 "); // Completely won for black...  Should be able to spot it.
 //	position.Initialize("1r1qr1k1/3nppb1/b2p2p1/2pn4/8/2N1BNPB/PPQ1PP2/R3K2R w KQ -"); // Testing.
 	position.Initialize("4r3/pp1brp2/4p1k1/4P3/5R2/P1R4P/1P3PP1/6K1 b - - 0 23"); // mate in 7 - q-search danger extensions
-	position.Initialize("4r1k1/5p1p/b1p1q1p1/p2pn3/1r5P/PPN2BP1/2QRPP2/5RK1 w - - 1 26"); // Bxd5 is noooo good - queen proximity to king term
+//	position.Initialize("4r1k1/5p1p/b1p1q1p1/p2pn3/1r5P/PPN2BP1/2QRPP2/5RK1 w - - 1 26"); // Bxd5 is noooo good - queen proximity to king term
 //  position.Initialize("r1b1rqk1/pp3pbp/4p1p1/1Q6/4BBN1/R7/1P3PPP/2R3K1 w - -");
 
 	EvalInfo evalInfo;

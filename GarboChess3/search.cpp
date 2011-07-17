@@ -6,6 +6,7 @@
 #include "hashtable.h"
 
 #include <cstdlib>
+#include <csetjmp>
 
 template<class T>
 void Swap(T& a, T &b)
@@ -488,7 +489,7 @@ u64 SearchStartTime;
 u64 SearchTimeLimit;
 
 bool KillSearch;
-jmp_buf KillSearchJump;
+std::jmp_buf KillSearchJump;
 
 const int SearchInfoPageSize = 4096;
 u64 searchInfoThreads;
@@ -1442,7 +1443,7 @@ Move IterativeDeepening(Position &rootPosition, const int maxDepth, int &score, 
 			const u64 nodeCount = searchInfo.NodeCount + searchInfo.QNodeCount;
 			const u64 msTaken = GetCurrentMilliseconds() - SearchStartTime;
 			const u64 nps = (nodeCount * 1000) / max(1ULL, msTaken);
-			printf("info depth %d score cp %d nodes %I64d time %I64d nps %I64d pv ", depth, (int)value, nodeCount, msTaken, nps);
+			printf("info depth %d score cp %d nodes %lld time %lld nps %lld pv ", depth, (int)value, nodeCount, msTaken, nps);
 			PrintPV(position, moves[0], depth * 3);
 			printf("\n");
 		}

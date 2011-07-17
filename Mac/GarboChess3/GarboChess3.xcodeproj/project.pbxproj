@@ -1,0 +1,255 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		3BB9A89013D2204E000ED418 /* evaluation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3B6F058B13CE942200171230 /* evaluation.cpp */; };
+		3BB9A89413D2204E000ED418 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3B6F059213CE942200171230 /* main.cpp */; };
+		3BB9A89613D2204E000ED418 /* movegen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3B6F059413CE942200171230 /* movegen.cpp */; };
+		3BB9A89813D2204E000ED418 /* position.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3B6F059613CE942200171230 /* position.cpp */; };
+		3BB9A89A13D2204E000ED418 /* psqTables.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3B6F059813CE942200171230 /* psqTables.cpp */; };
+		3BB9A89B13D2204E000ED418 /* search.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3B6F059A13CE942200171230 /* search.cpp */; };
+		3BB9A89D13D2204E000ED418 /* tests.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3B6F059F13CE942200171230 /* tests.cpp */; };
+		3BB9A89E13D2204E000ED418 /* utilities.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3B6F05A013CE942200171230 /* utilities.cpp */; };
+		3BB9A8A013D220BD000ED418 /* windows.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3B6F05A213CE942200171230 /* windows.cpp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		3B13998A13D21F4300BF6278 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		3B13998C13D21F4300BF6278 /* GarboChess */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = GarboChess; sourceTree = BUILT_PRODUCTS_DIR; };
+		3B13999213D21F4300BF6278 /* GarboChess.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; name = GarboChess.1; path = GarboChess/GarboChess.1; sourceTree = "<group>"; };
+		3B6F058B13CE942200171230 /* evaluation.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = evaluation.cpp; path = ../../GarboChess3/evaluation.cpp; sourceTree = "<group>"; };
+		3B6F058C13CE942200171230 /* evaluation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = evaluation.h; path = ../../GarboChess3/evaluation.h; sourceTree = "<group>"; };
+		3B6F058D13CE942200171230 /* garbochess.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = garbochess.h; path = ../../GarboChess3/garbochess.h; sourceTree = "<group>"; };
+		3B6F059013CE942200171230 /* hashtable.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = hashtable.h; path = ../../GarboChess3/hashtable.h; sourceTree = "<group>"; };
+		3B6F059213CE942200171230 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = main.cpp; path = ../../GarboChess3/main.cpp; sourceTree = "<group>"; };
+		3B6F059313CE942200171230 /* mersenne.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = mersenne.h; path = ../../GarboChess3/mersenne.h; sourceTree = "<group>"; };
+		3B6F059413CE942200171230 /* movegen.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = movegen.cpp; path = ../../GarboChess3/movegen.cpp; sourceTree = "<group>"; };
+		3B6F059513CE942200171230 /* movegen.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = movegen.h; path = ../../GarboChess3/movegen.h; sourceTree = "<group>"; };
+		3B6F059613CE942200171230 /* position.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = position.cpp; path = ../../GarboChess3/position.cpp; sourceTree = "<group>"; };
+		3B6F059713CE942200171230 /* position.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = position.h; path = ../../GarboChess3/position.h; sourceTree = "<group>"; };
+		3B6F059813CE942200171230 /* psqTables.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = psqTables.cpp; path = ../../GarboChess3/psqTables.cpp; sourceTree = "<group>"; };
+		3B6F059913CE942200171230 /* readme.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = readme.txt; path = ../../GarboChess3/readme.txt; sourceTree = "<group>"; };
+		3B6F059A13CE942200171230 /* search.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = search.cpp; path = ../../GarboChess3/search.cpp; sourceTree = "<group>"; };
+		3B6F059B13CE942200171230 /* search.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = search.h; path = ../../GarboChess3/search.h; sourceTree = "<group>"; };
+		3B6F059D13CE942200171230 /* perftsuite.epd */ = {isa = PBXFileReference; lastKnownFileType = text; path = perftsuite.epd; sourceTree = "<group>"; };
+		3B6F059E13CE942200171230 /* wac.epd */ = {isa = PBXFileReference; lastKnownFileType = text; path = wac.epd; sourceTree = "<group>"; };
+		3B6F059F13CE942200171230 /* tests.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = tests.cpp; path = ../../GarboChess3/tests.cpp; sourceTree = "<group>"; };
+		3B6F05A013CE942200171230 /* utilities.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = utilities.cpp; path = ../../GarboChess3/utilities.cpp; sourceTree = "<group>"; };
+		3B6F05A113CE942200171230 /* utilities.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = utilities.h; path = ../../GarboChess3/utilities.h; sourceTree = "<group>"; };
+		3B6F05A213CE942200171230 /* windows.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = windows.cpp; path = ../../GarboChess3/windows.cpp; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		3B13998913D21F4300BF6278 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		3B13998D13D21F4300BF6278 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				3B13998C13D21F4300BF6278 /* GarboChess */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		3B6F058213CE940500171230 = {
+			isa = PBXGroup;
+			children = (
+				3B6F058B13CE942200171230 /* evaluation.cpp */,
+				3B13999213D21F4300BF6278 /* GarboChess.1 */,
+				3B6F058C13CE942200171230 /* evaluation.h */,
+				3B6F058D13CE942200171230 /* garbochess.h */,
+				3B6F059013CE942200171230 /* hashtable.h */,
+				3B6F059213CE942200171230 /* main.cpp */,
+				3B6F059313CE942200171230 /* mersenne.h */,
+				3B6F059413CE942200171230 /* movegen.cpp */,
+				3B6F059513CE942200171230 /* movegen.h */,
+				3B6F059613CE942200171230 /* position.cpp */,
+				3B6F059713CE942200171230 /* position.h */,
+				3B6F059813CE942200171230 /* psqTables.cpp */,
+				3B6F059913CE942200171230 /* readme.txt */,
+				3B6F059A13CE942200171230 /* search.cpp */,
+				3B6F059B13CE942200171230 /* search.h */,
+				3B6F059C13CE942200171230 /* Tests */,
+				3B6F059F13CE942200171230 /* tests.cpp */,
+				3B6F05A013CE942200171230 /* utilities.cpp */,
+				3B6F05A113CE942200171230 /* utilities.h */,
+				3B6F05A213CE942200171230 /* windows.cpp */,
+				3B13998D13D21F4300BF6278 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		3B6F059C13CE942200171230 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				3B6F059D13CE942200171230 /* perftsuite.epd */,
+				3B6F059E13CE942200171230 /* wac.epd */,
+			);
+			name = Tests;
+			path = ../../GarboChess3/Tests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3B13998B13D21F4300BF6278 /* GarboChess */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3B13999513D21F4300BF6278 /* Build configuration list for PBXNativeTarget "GarboChess" */;
+			buildPhases = (
+				3B13998813D21F4300BF6278 /* Sources */,
+				3B13998913D21F4300BF6278 /* Frameworks */,
+				3B13998A13D21F4300BF6278 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = GarboChess;
+			productName = GarboChess;
+			productReference = 3B13998C13D21F4300BF6278 /* GarboChess */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		3B6F058413CE940500171230 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 3B6F058713CE940500171230 /* Build configuration list for PBXProject "GarboChess3" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 3B6F058213CE940500171230;
+			productRefGroup = 3B13998D13D21F4300BF6278 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3B13998B13D21F4300BF6278 /* GarboChess */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3B13998813D21F4300BF6278 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3BB9A8A013D220BD000ED418 /* windows.cpp in Sources */,
+				3BB9A89013D2204E000ED418 /* evaluation.cpp in Sources */,
+				3BB9A89413D2204E000ED418 /* main.cpp in Sources */,
+				3BB9A89613D2204E000ED418 /* movegen.cpp in Sources */,
+				3BB9A89813D2204E000ED418 /* position.cpp in Sources */,
+				3BB9A89A13D2204E000ED418 /* psqTables.cpp in Sources */,
+				3BB9A89B13D2204E000ED418 /* search.cpp in Sources */,
+				3BB9A89D13D2204E000ED418 /* tests.cpp in Sources */,
+				3BB9A89E13D2204E000ED418 /* utilities.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		3B13999313D21F4300BF6278 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				COPY_PHASE_STRIP = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = DEBUG;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.6;
+				New_Setting = "";
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		3B13999413D21F4300BF6278 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_32_64_BIT)";
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.6;
+				New_Setting = "";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		3B6F058913CE940500171230 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		3B6F058A13CE940500171230 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3B13999513D21F4300BF6278 /* Build configuration list for PBXNativeTarget "GarboChess" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3B13999313D21F4300BF6278 /* Debug */,
+				3B13999413D21F4300BF6278 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3B6F058713CE940500171230 /* Build configuration list for PBXProject "GarboChess3" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3B6F058913CE940500171230 /* Debug */,
+				3B6F058A13CE940500171230 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 3B6F058413CE940500171230 /* Project object */;
+}
