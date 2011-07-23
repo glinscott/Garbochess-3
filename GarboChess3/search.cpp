@@ -484,6 +484,18 @@ private:
 	Move hashMove, killer1, killer2;
 };
 
+inline bool SafePruneFromHash(const HashEntry *hashEntry, const int ply, const int beta)
+{
+    if (hashEntry->Depth >= (ply / OnePly))
+    {
+        const int hashFlags = hashEntry->GetHashFlags();
+        return (hashFlags == HashFlagsExact ||
+            (hashEntry->Score >= beta && hashFlags == HashFlagsBeta) ||
+            (hashEntry->Score < beta && hashFlags == HashFlagsAlpha));
+    }
+    return false;
+}
+
 // The time the search was begun at
 u64 SearchStartTime;
 u64 SearchTimeLimit;
@@ -499,7 +511,21 @@ SearchInfo &GetSearchInfo(int thread)
 	return (SearchInfo&)*((SearchInfo*)(searchInfoThreads + (SearchInfoPageSize * thread)));
 }
 
-const int qPruningWeight[8] = { 900, 175, 325, 325, 500, 900, 0, 0 };
+bool IsPassedPawnPush(const Position &position, const Move move)
+{
+	const Square from = GetFrom(move);
+	if (GetPieceType(position.Board[from]) != PAWN)
+	{
+		return false;
+	}
+    
+	const Bitboard theirPawns = position.Pieces[PAWN] & position.Colors[FlipColor(position.ToMove)];
+    
+	extern Bitboard PassedPawnBitboards[64][2];
+	return (PassedPawnBitboards[GetTo(move)][position.ToMove] & theirPawns) == 0;
+}
+
+const int qPruningWeight[8] = { 900, 80, 325, 325, 500, 975, 0, 0 };
 
 // depth == 0 is normally what is called for q-search.
 // Checks are searched when depth >= -(OnePly / 2).  Depth is decreased by 1 for checks
@@ -514,22 +540,37 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 		return DrawScore;
 	}
 
+	const bool isCutNode = alpha + 1 == beta;
+    
+    HashEntry *hashEntry;
+	Move hashMove;
+	if (ProbeHash(position.Hash, hashEntry))
+	{
+        if (isCutNode && SafePruneFromHash(hashEntry, 0, beta))
+            return hashEntry->Score;
+        
+		hashMove = hashEntry->Move;
+	}
+	else
+	{
+		hashMove = 0;
+	}
+
 	// What do we want from our evaluation? - this needs to be decided (mobility/threat information?)
 	EvalInfo evalInfo;
 	int eval = Evaluate(position, evalInfo);
-
-	const bool isCutNode = alpha + 1 == beta;
 
 	if (eval > alpha)
 	{
 		alpha = eval;
 		if (alpha >= beta)
-		{
+        {
+            StoreHash(position.Hash, eval, 0, 0, HashFlagsBeta);
 			return eval;
-		}
+        }
 	}
 
-	const int optimisticValue = eval + 50;
+	const int optimisticValue = eval + 90 + (evalInfo.KingDanger[FlipColor(position.ToMove)] ? 100 : 0);
 
 	MoveSorter<64> moves(position);
 	moves.GenerateCaptures();
@@ -537,14 +578,11 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 	Move move;
 	while ((move = moves.NextQMove()) != 0)
 	{
-		if (depth <= 0 && !FastSee(position, move, position.ToMove))
-		{
-			// TODO: we are excluding losing checks here as well - is this safe?
-			continue;
-		}
+        const bool seePrune = !FastSee(position, move, position.ToMove);
 
 		const int pruneValue = optimisticValue + qPruningWeight[GetPieceType(position.Board[GetTo(move)])];
-
+        const bool isPassedPawnPush = IsPassedPawnPush(position, move);
+        
 		MoveUndo moveUndo;
 		position.MakeMove(move, moveUndo);
 
@@ -559,13 +597,25 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 			}
 			else
 			{
-				if (pruneValue <= alpha && isCutNode)
+				if (pruneValue < alpha &&
+                    isCutNode && 
+                    move != hashMove &&
+                    !isPassedPawnPush &&
+                    GetMoveType(move) != MoveTypePromotion)
 				{
 					value = pruneValue;
 				}
 				else
 				{
-					value = -QSearch(position, searchInfo, -beta, -alpha, depth - OnePly);
+                    if (isCutNode && seePrune && move != hashMove)
+                    {
+                        // Prune SEE < 0 moves
+                        value = eval;
+                    }
+                    else
+                    {
+                        value = -QSearch(position, searchInfo, -beta, -alpha, depth - OnePly);
+                    }
 				}
 			}
 
@@ -591,7 +641,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 	}
 
 	// If the king is in danger, gamble a bit more on checking moves
-	if ((depth < -2 && !evalInfo.KingDanger[FlipColor(position.ToMove)]) || depth < -8)
+	if ((depth < -2 && !evalInfo.KingDanger[FlipColor(position.ToMove)]) || depth < -OnePly)
 	{
 		// Don't bother searching checking moves
 		return eval;
@@ -601,7 +651,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 
 	while ((move = moves.NextQMove()) != 0)
 	{
-		if (depth <= 0 && !FastSee(position, move, position.ToMove))
+		if (depth <= 0 && !FastSee(position, move, position.ToMove) && move != hashMove)
 		{
 			continue;
 		}
@@ -734,20 +784,6 @@ void CheckKillSearch()
 	}
 }
 
-bool IsPassedPawnPush(const Position &position, Move move)
-{
-	const Square from = GetFrom(move);
-	if (GetPieceType(position.Board[from]) != PAWN)
-	{
-		return false;
-	}
-
-	const Bitboard theirPawns = position.Pieces[PAWN] & position.Colors[FlipColor(position.ToMove)];
-
-	extern Bitboard PassedPawnBitboards[64][2];
-	return (PassedPawnBitboards[GetTo(move)][position.ToMove] & theirPawns) == 0;
-}
-
 int Search(Position &position, SearchInfo &searchInfo, const int beta, const int ply, const int depthFromRoot, const int flags, const bool inCheck)
 {
 	ASSERT(ply > 0);
@@ -764,22 +800,8 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 	Move hashMove;
 	if (ProbeHash(position.Hash, hashEntry))
 	{
-		if (hashEntry->Depth >= (ply / OnePly))
-		{
-			const int hashFlags = hashEntry->GetHashFlags();
-			if (hashFlags == HashFlagsExact)
-			{
-				return hashEntry->Score;
-			}
-			else if (hashEntry->Score >= beta && hashFlags == HashFlagsBeta)
-			{
-				return hashEntry->Score;
-			}
-			else if (hashEntry->Score < beta && hashFlags == HashFlagsAlpha)
-			{
-				return hashEntry->Score;
-			}
-		}
+        if (SafePruneFromHash(hashEntry, ply, beta))
+            return hashEntry->Score;
 
 		hashMove = hashEntry->Move;
 	}
@@ -789,10 +811,23 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 	}
 
 	int evaluation = MaxEval;
-	EvalInfo evalInfo;
+	EvalInfo evalInfo = Evaluate(position, evalInfo);
 
 	if (!inCheck)
 	{
+        // Try razoring
+        if (ply <= OnePly * 3)
+        {
+            if (evaluation < beta - 300)
+            {
+                int value = QSearch(position, searchInfo, beta - 1, beta, 0);
+                if (value < beta)
+                {
+                    return value;
+                }
+            }
+        }
+
 		if (ply >= 2 * OnePly &&
 			!(flags & 1) &&
 			// Make sure we don't null move if we don't have any heavy pieces left
@@ -827,23 +862,6 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 		}
 		else
 		{
-			// Try razoring
-			if (ply <= OnePly * 3)
-			{
-				if (evaluation == MaxEval)
-				{
-					evaluation = Evaluate(position, evalInfo);
-				}
-
-				if (evaluation < beta - 300)
-				{
-					int value = QSearch(position, searchInfo, beta - 1, beta, 0);
-					if (value < beta)
-					{
-						return value;
-					}
-				}
-			}
 		}
 	}
 

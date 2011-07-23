@@ -526,10 +526,9 @@ int AlphaBetaTest(Position &position, int alpha, int beta, Move &bestMove, int d
 	return bestScore;
 }
 
-void TestSuite(int depth)
+int TestSuite(const std::string &filename, s64 searchTime)
 {
-	std::FILE* file;
-    file = std::fopen("tests/wac.epd", "rt");
+	std::FILE* file = std::fopen(filename.c_str(), "rt");
 
 	char line[500];
 	int test = 0, passed = 0;
@@ -551,7 +550,7 @@ void TestSuite(int depth)
 //				int score = AlphaBetaTest(position, MinEval, MaxEval, bestMove, depth);
 
 				int iterScore;
-				Move iterMove = IterativeDeepening(position, depth, iterScore, -1, false);
+				Move iterMove = IterativeDeepening(position, 99, iterScore, searchTime, false);
 				bestMove = iterMove;
 
 				totalNodes += GetSearchInfo(0).NodeCount + GetSearchInfo(0).QNodeCount;
@@ -590,10 +589,24 @@ void TestSuite(int depth)
 		}
 	}
 
-	printf("%I64d", totalNodes);
+	//printf("Total nodes: %lld\n", totalNodes);
 	printf("Passed: %d/%d\n", passed, test);
 
 	fclose(file);
+    
+    return passed;
+}
+
+void RunSts()
+{
+    int passed = 0;
+    for (int i = 1; i <= 13; i++)
+    {
+        char buf[256];
+        sprintf(buf, "/Users/garylinscott/Development/garbochess3/GarboChess3/GarboChess3/Tests/STS%d.epd", i);
+        passed += TestSuite(buf, 100);
+    }
+	printf("Passed: %d\n", passed);
 }
 
 void RunTests()
@@ -605,7 +618,7 @@ void RunTests()
 	MoveSortingTests();
 	DrawTests();
 	HashTests();
-	EvaluationFlipTests();
+	//EvaluationFlipTests();
 	PawnEvaluationTests();
 
 	InitializeHash(16000000);
@@ -615,8 +628,8 @@ void RunTests()
 	int score;
 	Move move = IterativeDeepening(position, 12, score, -1, true);
 	printf("%s -> %d\n", GetMoveSAN(position, move).c_str(), score);*/
-
-	TestSuite(9);
+    
+    RunSts();
 
 /*	u64 startTime = GetCurrentMilliseconds();
 	Position position;

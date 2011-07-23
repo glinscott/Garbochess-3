@@ -215,6 +215,7 @@ int main()
 	InitializeHash(129000000);
 
 	RunTests();
+    return 0;
 
 //	RunEngine();
 
@@ -228,6 +229,7 @@ int main()
 	position.Initialize("4r3/pp1brp2/4p1k1/4P3/5R2/P1R4P/1P3PP1/6K1 b - - 0 23"); // mate in 7 - q-search danger extensions
 //	position.Initialize("4r1k1/5p1p/b1p1q1p1/p2pn3/1r5P/PPN2BP1/2QRPP2/5RK1 w - - 1 26"); // Bxd5 is noooo good - queen proximity to king term
 //  position.Initialize("r1b1rqk1/pp3pbp/4p1p1/1Q6/4BBN1/R7/1P3PPP/2R3K1 w - -");
+    position.Initialize("rnbqkbnr/pppp1Np1/4ppB1/4P2p/1P6/2N2Q2/PBPP1PPP/R4RK1 w - - 4 14"); // mate
 
 	EvalInfo evalInfo;
 	int score = Evaluate(position, evalInfo);
