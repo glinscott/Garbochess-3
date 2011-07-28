@@ -811,13 +811,18 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 	}
 
 	int evaluation = MaxEval;
-	EvalInfo evalInfo = Evaluate(position, evalInfo);
+	EvalInfo evalInfo;
 
 	if (!inCheck)
 	{
         // Try razoring
         if (ply <= OnePly * 3)
         {
+            if (evaluation == MaxEval)
+            {
+                evaluation = Evaluate(position, evalInfo);
+            }
+            
             if (evaluation < beta - 300)
             {
                 int value = QSearch(position, searchInfo, beta - 1, beta, 0);
@@ -961,7 +966,7 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 					ply >= 3 * OnePly &&
 					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves)
 				{
-          newPly = ply - ((2 * OnePly) + (moveCount >= 15 ? OnePly / 2: 0 ));
+                    newPly = ply - ((2 * OnePly) + (moveCount >= 15 ? OnePly / 2: 0 ));
 				}
 				else
 				{
