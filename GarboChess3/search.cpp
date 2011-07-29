@@ -593,7 +593,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 			// Search this move
 			if (position.IsInCheck())
 			{
-				value = -QSearchCheck(position, searchInfo, -beta, -alpha, depth - 1);
+				value = -QSearchCheck(position, searchInfo, -beta, -alpha, depth - OnePly);
 			}
 			else
 			{
@@ -641,7 +641,8 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 	}
 
 	// If the king is in danger, gamble a bit more on checking moves
-	if ((depth < -2 && !evalInfo.KingDanger[FlipColor(position.ToMove)]) || depth < -OnePly)
+    // (depth < -2 && !evalInfo.KingDanger[FlipColor(position.ToMove)]) || 
+	if (depth < -OnePly)
 	{
 		// Don't bother searching checking moves
 		return eval;
@@ -663,7 +664,7 @@ int QSearch(Position &position, SearchInfo &searchInfo, int alpha, const int bet
 		{
 			ASSERT(position.IsInCheck());
 
-			int value = -QSearchCheck(position, searchInfo, -beta, -alpha, depth - 1);
+			int value = -QSearchCheck(position, searchInfo, -beta, -alpha, depth - OnePly);
 
 			position.UnmakeMove(move, moveUndo);
 			
@@ -725,7 +726,7 @@ int QSearchCheck(Position &position, SearchInfo &searchInfo, int alpha, const in
 		int value;
 		if (position.IsInCheck())
 		{
-			value = -QSearchCheck(position, searchInfo, -beta, -alpha, depth - 1);
+			value = -QSearchCheck(position, searchInfo, -beta, -alpha, depth - depthReduction);
 		}
 		else
 		{
