@@ -6,6 +6,7 @@
 #include "hashtable.h"
 #include "utilities.h"
 
+#include <cmath>
 #include <cstdio>
 #include <vector>
 
@@ -473,20 +474,20 @@ int AlphaBetaTest(Position &position, int alpha, int beta, Move &bestMove, int d
 		return 0;
 	}
 
+    GetSearchInfo(0).NodeCount++;
+    
 	Move moves[256];
 	int moveCount = GenerateLegalMoves(position, moves);
-	bool wasInCheck = position.IsInCheck();
 
 	bestMove = 0;
 	int bestScore = MinEval;
 	for (int i = 0; i < moveCount; i++)
 	{
-//		const std::string fooString = GetMoveSAN(position, moves[i]);
 		MoveUndo moveUndo;
 		position.MakeMove(moves[i], moveUndo);
 
 		int score;
-		int newDepth = (position.IsInCheck() || (wasInCheck && moveCount == 1)) ? depth : depth - 1;
+		int newDepth = position.IsInCheck() ? depth : depth - 1;
 		if (newDepth <= 0)
 		{
 			if (position.IsInCheck())
@@ -504,9 +505,6 @@ int AlphaBetaTest(Position &position, int alpha, int beta, Move &bestMove, int d
 			score = -AlphaBetaTest(position, -beta, -alpha, tmp, newDepth);
 		}
 		position.UnmakeMove(moves[i], moveUndo);
-
-/*		if (depth == 3)
-		std::printf("Searched %d.%s - > %d\n", i, fooString.c_str(), score);*/
 
 		if (score > bestScore || bestMove == 0)
 		{
@@ -526,13 +524,21 @@ int AlphaBetaTest(Position &position, int alpha, int beta, Move &bestMove, int d
 	return bestScore;
 }
 
-int TestSuite(const std::string &filename, s64 searchTime)
+int TestSuite(const std::string &filename, s64 searchTime, int searchDepth)
 {
 	std::FILE* file = std::fopen(filename.c_str(), "rt");
-
+    
+    if (searchDepth != -1)
+        searchTime = 1000000;
+    else
+        searchDepth = 99;
+    
 	char line[500];
 	int test = 0, passed = 0;
 	u64 totalNodes = 0;
+    double error = 0;
+    s64 nodeDiff = 0;
+    
 	while (std::fgets(line, 500, file) != NULL)
 	{
 		Position position;
@@ -542,29 +548,26 @@ int TestSuite(const std::string &filename, s64 searchTime)
 		{
 			if (line[i] == 'b' && line[i + 1] == 'm')
 			{
-				std::string fen = line;
-				fen = fen.substr(i + 3);
-
-				std::vector<std::string> moves = tokenize(fen, " ;");
-				Move bestMove;
-//				int score = AlphaBetaTest(position, MinEval, MaxEval, bestMove, depth);
-
 				int iterScore;
-				Move iterMove = IterativeDeepening(position, 99, iterScore, searchTime, false);
-				bestMove = iterMove;
+				Move iterMove = IterativeDeepening(position, searchDepth, iterScore, searchTime, false);
+				const u64 iterNodes = GetSearchInfo(0).NodeCount + GetSearchInfo(0).QNodeCount;
+                totalNodes += iterNodes;
 
-				totalNodes += GetSearchInfo(0).NodeCount + GetSearchInfo(0).QNodeCount;
-
-				std::string bestMoveString = GetMoveSAN(position, bestMove);
-/*				if (iterScore != score)
-				{
-					printf("score bad! %d. %s, %s\n", test, bestMoveString.c_str(), GetMoveSAN(position, iterMove).c_str());
-				}
-				else if (iterMove != bestMove)
-				{
-					printf("%d. %s, %s\n", test, bestMoveString.c_str(), GetMoveSAN(position, iterMove).c_str());
-				}*/
-
+                if (searchDepth != -1)
+                {
+                    Move bestMove;
+                    int score = AlphaBetaTest(position, MinEval, MaxEval, bestMove, searchDepth);
+                    const u64 rawNodes = GetSearchInfo(0).NodeCount + GetSearchInfo(0).QNodeCount;
+                    
+                    error += sqrt((score-iterScore)*(score-iterScore));
+                    nodeDiff += rawNodes - totalNodes;
+                }
+                
+                std::string fen = line;
+				fen = fen.substr(i + 3);
+                
+				std::vector<std::string> moves = tokenize(fen, " ;");
+				std::string bestMoveString = GetMoveSAN(position, iterMove);
 				bool match = false;
 				for (int j = 0; j < (int)moves.size(); j++)
 				{
@@ -587,10 +590,13 @@ int TestSuite(const std::string &filename, s64 searchTime)
 				test++;
 			}
 		}
+        
+        break;
 	}
 
+    printf("%.4lf - %lld\n", error, nodeDiff);
 	//printf("Total nodes: %lld\n", totalNodes);
-	printf("Passed: %d/%d\n", passed, test);
+	//printf("Passed: %d/%d\n", passed, test);
 
 	fclose(file);
     
@@ -604,7 +610,7 @@ void RunSts()
     {
         char buf[256];
         sprintf(buf, "/Users/garylinscott/Development/garbochess3/GarboChess3/GarboChess3/Tests/STS%d.epd", i);
-        passed += TestSuite(buf, 100);
+        passed += TestSuite(buf, -1, 3);
     }
 	printf("Passed: %d\n", passed);
 }
