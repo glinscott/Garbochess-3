@@ -494,6 +494,12 @@ int AlphaBetaTest(Position &position, SearchInfo &searchInfo, int alpha, int bet
 	{
 		MoveUndo moveUndo;
 		position.MakeMove(move, moveUndo);
+        
+        if (position.CanCaptureKing())
+        {
+            position.UnmakeMove(move, moveUndo);
+            continue;
+        }
 
 		int score;
 		int newDepth = position.IsInCheck() ? depth : depth - 1;
@@ -570,6 +576,10 @@ int TestSuite(const std::string &filename, s64 searchTime, int searchDepth)
                     
                     error += sqrt((score-iterScore)*(score-iterScore));
                     nodeDiff += rawNodes - totalNodes;
+                    if (error > 100)
+                    {
+                        printf("bad position: %s\n%s\n", position.GetFen().c_str(), line);
+                    }
                 }
                 
                 std::string fen = line;
