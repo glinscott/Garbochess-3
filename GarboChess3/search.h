@@ -10,6 +10,7 @@ struct SearchInfo
 	u64 Timeout;
 
 	Move Killers[MaxPly][2];
+    int History[16][64];
 };
 
 // Set to true to stop the search as soon as possible

@@ -53,6 +53,7 @@
 		3B6F05A013CE942200171230 /* utilities.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = utilities.cpp; path = ../../GarboChess3/utilities.cpp; sourceTree = "<group>"; };
 		3B6F05A113CE942200171230 /* utilities.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = utilities.h; path = ../../GarboChess3/utilities.h; sourceTree = "<group>"; };
 		3B6F05A213CE942200171230 /* windows.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = windows.cpp; path = ../../GarboChess3/windows.cpp; sourceTree = "<group>"; };
+		3BEBD75A143D1D5300B3DAE3 /* movesorter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = movesorter.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -77,6 +78,7 @@
 		3B6F058213CE940500171230 = {
 			isa = PBXGroup;
 			children = (
+				3BEBD75A143D1D5300B3DAE3 /* movesorter.h */,
 				3B6F058B13CE942200171230 /* evaluation.cpp */,
 				3B13999213D21F4300BF6278 /* GarboChess.1 */,
 				3B6F058C13CE942200171230 /* evaluation.h */,

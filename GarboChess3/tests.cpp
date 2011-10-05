@@ -5,6 +5,7 @@
 #include "search.h"
 #include "hashtable.h"
 #include "utilities.h"
+#include "movesorter.h"
 
 #include <cmath>
 #include <cstdio>
@@ -467,7 +468,7 @@ void RunPerftSuite(int depthToVerify)
 	fclose(file);
 }
 
-int AlphaBetaTest(Position &position, int alpha, int beta, Move &bestMove, int depth)
+int AlphaBetaTest(Position &position, SearchInfo &searchInfo, int alpha, int beta, Move &bestMove, int depth)
 {
 	if (position.IsDraw())
 	{
@@ -476,15 +477,23 @@ int AlphaBetaTest(Position &position, int alpha, int beta, Move &bestMove, int d
 
     GetSearchInfo(0).NodeCount++;
     
-	Move moves[256];
-	int moveCount = GenerateLegalMoves(position, moves);
-
+	MoveSorter<256> moves(position, searchInfo);
+	if (!position.IsInCheck())
+	{
+		moves.InitializeNormalMoves(0, 0, 0, true);
+	}
+	else
+	{
+		moves.GenerateCheckEscape();
+    }
+    
 	bestMove = 0;
 	int bestScore = MinEval;
-	for (int i = 0; i < moveCount; i++)
+    Move move;
+    while((move = moves.NextNormalMove()) != 0)
 	{
 		MoveUndo moveUndo;
-		position.MakeMove(moves[i], moveUndo);
+		position.MakeMove(move, moveUndo);
 
 		int score;
 		int newDepth = position.IsInCheck() ? depth : depth - 1;
@@ -492,23 +501,23 @@ int AlphaBetaTest(Position &position, int alpha, int beta, Move &bestMove, int d
 		{
 			if (position.IsInCheck())
 			{
-				score = -QSearchCheck(position, GetSearchInfo(0), -beta, -alpha, 0);
+				score = -QSearchCheck(position, searchInfo, -beta, -alpha, 0);
 			}
 			else
 			{
-				score = -QSearch(position, GetSearchInfo(0), -beta, -alpha, 0);
+				score = -QSearch(position, searchInfo, -beta, -alpha, 0);
 			}
 		}
 		else
 		{
 			Move tmp;
-			score = -AlphaBetaTest(position, -beta, -alpha, tmp, newDepth);
+			score = -AlphaBetaTest(position, searchInfo, -beta, -alpha, tmp, newDepth);
 		}
-		position.UnmakeMove(moves[i], moveUndo);
+		position.UnmakeMove(move, moveUndo);
 
 		if (score > bestScore || bestMove == 0)
 		{
-			bestMove = moves[i];
+			bestMove = move;
 			bestScore = score;
 			if (score > alpha)
 			{
@@ -556,7 +565,7 @@ int TestSuite(const std::string &filename, s64 searchTime, int searchDepth)
                 if (searchDepth != -1)
                 {
                     Move bestMove;
-                    int score = AlphaBetaTest(position, MinEval, MaxEval, bestMove, searchDepth);
+                    int score = AlphaBetaTest(position, GetSearchInfo(0), MinEval, MaxEval, bestMove, searchDepth);
                     const u64 rawNodes = GetSearchInfo(0).NodeCount + GetSearchInfo(0).QNodeCount;
                     
                     error += sqrt((score-iterScore)*(score-iterScore));
@@ -610,7 +619,7 @@ void RunSts()
     {
         char buf[256];
         sprintf(buf, "/Users/garylinscott/Development/garbochess3/GarboChess3/GarboChess3/Tests/STS%d.epd", i);
-        passed += TestSuite(buf, -1, 3);
+        passed += TestSuite(buf, -1, 5);
     }
 	printf("Passed: %d\n", passed);
 }
