@@ -568,7 +568,7 @@ int TestSuite(const std::string &filename, s64 searchTime, int searchDepth)
 				const u64 iterNodes = GetSearchInfo(0).NodeCount + GetSearchInfo(0).QNodeCount;
                 totalNodes += iterNodes;
 
-                if (searchDepth != -1)
+                if (searchDepth != 99)
                 {
                     Move bestMove;
                     int score = AlphaBetaTest(position, GetSearchInfo(0), MinEval, MaxEval, bestMove, searchDepth);
@@ -609,13 +609,11 @@ int TestSuite(const std::string &filename, s64 searchTime, int searchDepth)
 				test++;
 			}
 		}
-        
-        break;
 	}
 
-    printf("%.4lf - %lld\n", error, nodeDiff);
-	//printf("Total nodes: %lld\n", totalNodes);
-	//printf("Passed: %d/%d\n", passed, test);
+    //printf("%.4lf - %lld\n", error, nodeDiff);
+	printf("Total nodes: %lld\n", totalNodes);
+	printf("Passed: %d/%d\n", passed, test);
 
 	fclose(file);
     
@@ -629,7 +627,8 @@ void RunSts()
     {
         char buf[256];
         sprintf(buf, "/Users/garylinscott/Development/garbochess3/GarboChess3/GarboChess3/Tests/STS%d.epd", i);
-        passed += TestSuite(buf, -1, 5);
+        //passed += TestSuite(buf, -1, 5);
+        passed += TestSuite(buf, 100, -1);
     }
 	printf("Passed: %d\n", passed);
 }

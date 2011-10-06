@@ -552,38 +552,30 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 
 	if (!inCheck)
 	{
+        evaluation = Evaluate(position, evalInfo);
+
         // Try razoring
-        if (ply <= OnePly * 3)
+        if (ply <= OnePly * 4 &&
+            hashMove == 0 &&
+            evaluation < beta - (200 + 2 * ply))
         {
-            if (evaluation == MaxEval)
-            {
-                evaluation = Evaluate(position, evalInfo);
-            }
-            
-            if (evaluation < beta - 300)
-            {
-                int value = QSearch(position, searchInfo, beta - 1, beta, 0);
-                if (value < beta)
-                {
-                    return value;
-                }
-            }
+            int value = QSearch(position, searchInfo, beta - 1, beta, 0);
+            if (value < beta)
+                return value;
         }
 
-		if (ply >= 2 * OnePly &&
+		if (ply > OnePly &&
 			!(flags & 1) &&
+			evaluation >= beta &&
 			// Make sure we don't null move if we don't have any heavy pieces left
-			(evaluation = Evaluate(position, evalInfo)) >= beta &&
 			evalInfo.GamePhase[position.ToMove] > 0)
 		{
 			// Attempt to null-move
 			MoveUndo moveUndo;
 			position.MakeNullMove(moveUndo);
 
-			//const int R = (ply >= 7 * OnePly) ? (5 * OnePly) : (4 * OnePly);
-			const int R = 4 * OnePly;
-
-			const int newPly = ply - R;
+			const int R = 3 + (ply >= 5 * OnePly ? (ply / OnePly) / 4 : 0);
+			const int newPly = ply - (R * OnePly);
 			int score;
 			if (newPly <= 0)
 			{
@@ -601,9 +593,6 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 				StoreHash(position.Hash, score, 0, newPly, HashFlagsBeta);
 				return score;
 			}
-		}
-		else
-		{
 		}
 	}
 
@@ -700,10 +689,11 @@ int Search(Position &position, SearchInfo &searchInfo, const int beta, const int
 				if (!inCheck &&
 					!isPassedPawnPush &&
 					moveCount >= 3 &&
-					ply >= 3 * OnePly &&
+					ply > 3 * OnePly &&
 					moves.GetMoveGenerationState() == MoveGenerationState_QuietMoves)
 				{
-                    newPly = ply - ((2 * OnePly) + (moveCount >= 15 ? OnePly / 2: 0 ));
+                    int reduction = min(max(moveCount - 8, 0), 3 * OnePly); 
+                    newPly = ply - OnePly - reduction;
 				}
 				else
 				{
