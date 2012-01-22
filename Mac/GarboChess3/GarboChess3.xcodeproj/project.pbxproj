@@ -138,6 +138,9 @@
 /* Begin PBXProject section */
 		3B6F058413CE940500171230 /* Project object */ = {
 			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0420;
+			};
 			buildConfigurationList = 3B6F058713CE940500171230 /* Build configuration list for PBXProject "GarboChess3" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
